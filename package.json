@@ -1,0 +1,17 @@
+{
+  "name": "friendly-webgpu",
+  "version": "0.0.1",
+  "description": "This library is a simplified wrapper around the WebGPU API, designed to make it easier to create and run shaders without dealing with the complex details of the WebGPU setup. It allows developers to initialize WebGPU, create data buffers, write shaders, and execute compute or render passes, all with a streamlined interface. The library is suitable for both beginners who want to experiment with GPU programming and experienced developers looking to speed up prototyping.",
+  "main": "index.js",
+  "scripts": {
+    "build:esnext": "tsc",
+    "build:cjs": "tsc --project tsconfig-cjs.json",
+    "build": "npm run build:esnext && npm run build:cjs"
+  },
+  "author": "Joshua Sideris",
+  "license": "MIT",
+  "devDependencies": {
+    "@webgpu/types": "^0.1.51",
+    "typescript": "^5.7.2"
+  }
+}

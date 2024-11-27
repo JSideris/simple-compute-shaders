@@ -1,0 +1,1 @@
+export { Shader } from './shader';
