@@ -1,1 +1,0 @@
-The examples within are unpolished and not really functional. I'll put some better examples up later.

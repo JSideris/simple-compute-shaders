@@ -82,7 +82,7 @@ export abstract class Shader {
 
 		let newBinding = `@binding(${numb}) @group(${0}) ${bl.type == "var" ? "var" : `var<${bl.type == "read-only-storage" ? "storage, read" : bl.type == "storage" ? "storage, read_write" : bl.type == "write-only-texture" ? "storage, read_write" : "uniform"}>`} ${bl.name}: ${dataType};\r\n`;
 
-		console.log(newBinding);
+		// console.log(newBinding);
 
 		return newBinding;
 	}

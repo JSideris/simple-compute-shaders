@@ -1,9 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": [
-      "es2017", "dom"
-    ],
+    "lib": ["es2017", "dom"],
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -17,8 +15,8 @@
     "isolatedModules": true,
     "types": ["@webgpu/types"],
     "outDir": "./dist/esnext",
+    "declaration": true,
+    "declarationDir": "./dist/esnext"
   },
-  "include": [
-    "src"
-  ]
+  "include": ["src"]
 }

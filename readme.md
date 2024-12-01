@@ -30,6 +30,7 @@ Small disclaimer: GPU programming is hard and complex. This library simplifies a
 - Buffer swapping and groups are not supported yet, but are coming soon.
 - No vertex shaders or vertex buffers. A significant part of the complexity of GPU programming is dealing with vertex data. This library is for users who want to build compute shaders or do 2D rendering on a quad.
 - Only one shader entry point is supported.
+- GPUBufferUsage.MAP_WRITE and GPUBufferUsage.MAP_READ are currently unsupported.
 
 ## Requirements
 
@@ -87,8 +88,8 @@ Where `BufferProps` contains fields:
 - **dataType**: The data type of the buffer that will be generated within WGSL. This is also used to determine the size per element, return types, and more.
 - **size** (conditional): The size of the buffer in elements. Only required when using `array` or `texture_2d` data types.
 - **initialValue** (optional): An array-like object containing the initial value of the buffer. Note that even `u32`, `i32`, and `f32` types are passed in as an array of length 1.
-- **canMapRead** (optional): A boolean value indicating that this buffer should use the `GPUBufferUsage.MAP_READ` flag. This allows CPU access to the buffer data for reading purposes.
-- **canMapWrite** (optional): A boolean value indicating that this buffer should use the `GPUBufferUsage.MAP_WRITE` flag. This allows CPU access to the buffer data for writing purposes.
+- **canMapRead** (NOT SUPPORTED): A boolean value indicating that this buffer should use the `GPUBufferUsage.MAP_READ` flag. This allows CPU access to the buffer data for reading purposes.
+- **canMapWrite** (NOT SUPPORTED): A boolean value indicating that this buffer should use the `GPUBufferUsage.MAP_WRITE` flag. This allows CPU access to the buffer data for writing purposes.
 - **canCopySrc** (optional): A boolean value indicating that this buffer should use the `GPUBufferUsage.COPY_SRC` flag. This allows the buffer data to be copied to other buffers or textures.
 - **canCopyDst** (optional): A boolean value indicating that this buffer should use the `GPUBufferUsage.COPY_DST` flag. This allows other buffers or textures to copy their data into this buffer.
 - **canQueryResolve** (optional): A boolean value indicating that this buffer should use the `GPUBufferUsage.QUERY_RESOLVE` flag. Typically used for resolving the results of GPU queries.
@@ -105,90 +106,35 @@ If the `dataType` is set to an `array<T>` or a `texture_2d<T>`, you must provide
 
 There are two distinct ways to read and write data after a shader has been set up: mapping, and copying. These require specific usage flags to be set up. In the buffer's constructor. Here is a guide on how to choose the usage that makes the most sense.
 
-### MAP_WRITE:
-
-- Set `canMapWrite` to true in the buffer's constructor properties.
-- Use `await ShaderBuffer.writeMap()` to write data.
-- Use when you need to write data directly into the GPU buffer memory.
-- Ideal for incremental or interactive updates to buffer data.
-- Requires explicit mapping and unmapping, which may introduce some overhead but provides more control.
-
-`async writeMap(value: Float32Array | Uint32Array, offset = 0)`
-
-Writes data to the buffer using MAP_WRITE, allowing data to be transferred from CPU to GPU.
-
-- **value**: The data to be written to the buffer.
-- **offset** (optional): The offset in elements from the start of the buffer where the data should be written.
-
-### COPY_DST:
+### Writing Data:
 
 - Set `canCopyDst` to true in the buffer's constructor properties.
-- Use `await ShaderBuffer.writeDst()` to write data.
+- Use `await ShaderBuffer.write()` to write data.
 - Use when you want to write data to a buffer using queue.writeBuffer().
 - Best suited for bulk writes that need to be quickly submitted to the GPU command queue.
 - The write operation is non-blocking, meaning it doesn’t require an explicit mapping or unmapping step, making it more efficient for frequent or large data transfers.
 
-`writeDst(value: Float32Array | Uint32Array, offset = 0)`
+`write(value: Float32Array | Uint32Array, offset = 0)`
 
 Writes data to the buffer using COPY_DST, allowing data to be transferred from CPU to GPU.
 
 - **value**: The data to be written to the buffer.
 - **offset** (optional): The offset in bytes from the start of the buffer where the data should be written.
 
-### MAP_READ:
-
-- Set `canMapRead` to true in the buffer's constructor properties.
-- Use `await ShaderBuffer.readMap()` to read data.
-- Use when you need direct access to a buffer's memory for reading.
-- Best suited for small or frequent reads where interactive or on-demand data access is required.
-- The buffer must be mapped, so you should ensure this process does not block GPU operations.
-
-`readMap(offset:number = 0, length: number = this.sizeElements)`
-
-Asynchronously reads data directly from the buffer by mapping it with MAP_READ usage.
-
-- **offset**: The offset in elements from the start of the buffer where the data should be read from.
-- **length**: The size in elements to be read from the buffer.
-
-### COPY_SRC:
+### Reading Data:
 
 - Set `canCopySrc` to true in the buffer's constructor properties.
-- Use `await ShaderBuffer.readSrc()` to read data.
+- Use `await ShaderBuffer.read()` to read data.
 - Use when you want to read buffer data by copying it to a staging buffer first.
 - Best for bulk data reads where the source buffer cannot be mapped directly, or to avoid affecting performance-critical GPU operations.
 - Often combined with a staging buffer that is mappable (MAP_READ) for reading on the CPU.
 
-`readSrc(offset:number = 0, length: number = this.sizeElements)`
+`read(offset:number = 0, length: number = this.sizeElements)`
 
 Asynchronously reads data directly from the buffer by mapping it with MAP_READ usage.
 
 - **offset**: The offset in elements from the start of the buffer where the data should be read from.
 - **length**: The size in elements to be read from the buffer.
-
-When creating the buffer, you can optionally write an initial value. After that, you would typically use `ShaderBuffer.write()`. In order to write to a buffer, the buffer must have 
-
-`ShaderBuffer.write(value: Float32Array | Uint32Array, offset = 0)`
-
-- **value**: The data to write to the buffer. This can be either a `Float32Array` or `Uint32Array`.
-- **offset** (optional): The byte offset in the buffer at which to start writing. Defaults to `0`.
-
-To read a 
-
-#### Parameters:
-- **`buffer`**: The `GPUBuffer` to read from. This buffer must have the `GPUBufferUsage.MAP_READ` usage flag set.
-- **`size32`**: The size (in 32-bit units) of the data to be read from the buffer.
-
-#### Returns:
-- A `Promise` that resolves to a `Uint32Array` containing the data read from the buffer.
-
-#### Example Usage:
-```typescript
-// Assume `buffer` is a GPUBuffer with usage GPUBufferUsage.MAP_READ
-const data = await Shader.readGPUBufferData(buffer, 64);
-console.log(data); // Logs the contents of the buffer as a Uint32Array
-```
-
-This utility method abstracts the complexity of mapping and unmapping GPU buffers, making it straightforward to read data from the GPU for inspection or processing.
 
 ## Creating Shaders
 
@@ -211,6 +157,8 @@ Constructs a pipeline for a compute shader. The `ComputeShaderProps` type is use
 #### Example:
 
 ```typescript
+
+await Shader.initialize();
 
 let myBuffer = new StorageBuffer({
 	dataType: "array<f32>",
@@ -254,13 +202,15 @@ Constructs a new pipeline for a render shader, containing a built-in vertex stag
 
 ```typescript
 
-let myBuffer = new UniformBuffer({
+await Shader.initialize();
+
+let myUniformBuffer = new UniformBuffer({
 	dataType: "vec4<f32>",
 	canCopyDst: true,
 	initialValue: [1,0,0,1] // Red
 });
 
-const renderShader = new RenderShader({
+const renderShader = new RenderShader2d({
 	code: `
 		@fragment
 		fn main() -> @location(0) vec4<f32> {
@@ -278,7 +228,14 @@ const renderShader = new RenderShader({
 });
 
 function render(){
-	myBuffer.writeDst([Math.random(),Math.random(),Math.random(),1]);
+	let now = Date.now() / 1000;
+	myUniformBuffer.write(new Float32Array([
+		(Math.sin(now) * 0.5 + 0.5),
+		(Math.sin(now * 1.667) * 0.5 + 0.5),
+		(Math.sin(now * 1.333) * 0.5 + 0.5),
+		1
+	]));
+
 	renderShader.pass();
 	requestAnimationFrame(()=>{render();});
 }

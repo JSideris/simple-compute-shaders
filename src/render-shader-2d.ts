@@ -190,8 +190,8 @@ export default class RenderShader2d extends Shader{
 
 	pass(props?: { bindGroup?: string }) {
 
-		this.widthBuffer.writeDst(new Float32Array([this.props.canvas.width]));
-		this.heightBuffer.writeDst(new Float32Array([this.props.canvas.height]));
+		this.widthBuffer.write(new Float32Array([this.props.canvas.width]));
+		this.heightBuffer.write(new Float32Array([this.props.canvas.height]));
 
 		this.lastBindGroup = props?.bindGroup || this.lastBindGroup;
 
