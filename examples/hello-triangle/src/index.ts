@@ -23,15 +23,44 @@ class Renderer{
 		this.colorBuffer = new UniformBuffer({
 			dataType: "vec4<f32>",
 			// canCopyDst: true,
-			canMapWrite: true,
+			canCopyDst: true,
 			initialValue: [1,0,0,1] // Red
 		});
 		
 		this.renderShader = new RenderShader2d({
 			code: `
+
+				fn isPointInTriangle(p: vec2<f32>, v0: vec2<f32>, v1: vec2<f32>, v2: vec2<f32>) -> bool {
+					let dX = p.x - v2.x;
+					let dY = p.y - v2.y;
+					let dX21 = v2.x - v1.x;
+					let dY12 = v1.y - v2.y;
+					let D = dY12 * (v0.x - v2.x) + dX21 * (v0.y - v2.y);
+					let s = dY12 * dX + dX21 * dY;
+					let t = (v2.y - v0.y) * dX + (v0.x - v2.x) * dY;
+					
+					if (D < 0.0) {
+						return s <= 0.0 && t <= 0.0 && s + t >= D;
+					}
+					return s >= 0.0 && t >= 0.0 && s + t <= D;
+				}
+
 				@fragment
-				fn main() -> @location(0) vec4<f32> {
-					return color; // value of the color uniform.
+				fn main(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4<f32> {
+					// Define three arbitrary coordinates for the triangle in normalized coordinates (0..1 range)
+					let v0 = vec2<f32>(0.25 * canvasWidth, 0.25 * canvasHeight); // Bottom-left
+					let v1 = vec2<f32>(0.75 * canvasWidth, 0.25 * canvasHeight); // Bottom-right
+					let v2 = vec2<f32>(0.5 * canvasWidth, 0.75 * canvasHeight);  // Top-center
+
+					// Get the current fragment position
+					let p = fragCoord.xy;
+
+					// Check if the point lies within the triangle
+					if (isPointInTriangle(p, v0, v1, v2)) {
+						return color; // Inside the triangle, return the given color
+					}
+
+					return vec4<f32>(0.0, 0.0, 0.0, 1.0); // Background is black
 				}
 			`,
 			bindingLayouts: [
@@ -50,7 +79,7 @@ class Renderer{
 	render(){
 		
 		let now = Date.now() / 1000;
-		this.colorBuffer.writeMap(new Float32Array([
+		this.colorBuffer.write(new Float32Array([
 			(Math.sin(now) * 0.5 + 0.5),
 			(Math.sin(now * 1.7) * 0.5 + 0.5),
 			(Math.sin(now * 1.3) * 0.5 + 0.5),

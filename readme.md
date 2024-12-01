@@ -60,8 +60,8 @@ npm i simple-compute-shaders
 
 ## Examples
 
-- [Hello Triangle](#): sipmle render pipeline.
-- [Audio Processor](#): compute DFT of an audio signal and render.
+- [Hello Triangle](https://github.com/JSideris/simple-compute-shaders/tree/master/examples/hello-triangle): sipmle render pipeline.
+- [Audio Processor](https://github.com/JSideris/simple-compute-shaders/tree/master/examples/audio-processor): compute DFT of an audio signal and render.
 
 # Usage
 
