@@ -63,7 +63,7 @@ export default class Pipeline {
 
 		// Sort the data.
 
-		this.sortComputeShader.pass();
+		this.sortComputeShader.dispatch();
 
 		// Read the data back.
 

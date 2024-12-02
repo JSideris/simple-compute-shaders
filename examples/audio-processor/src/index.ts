@@ -254,11 +254,10 @@ export default class Pipeline {
 		this.stepBuffer.write(new Uint32Array([this.frameCount++]));
 		this.audioBuffers[0].write(new Float32Array(this.audioData));
 
-		// Compute the FFT.
+		// Compute the DFT.
+		this.dftComputeShader.dispatch();
 
-		this.dftComputeShader.pass();
-
-
+		// Render.
 		this.fftRenderShader.pass();
 
 		requestAnimationFrame(() => this.runPipeline());

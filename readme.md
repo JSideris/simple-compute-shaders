@@ -55,12 +55,13 @@ npm i simple-compute-shaders
 3. Initialize `Shader` by calling `Shader.initialize()`. This is required once per application.
 4. Define your GPU buffers (data you'll be passing into or reading from the GPU).
 5. Instantiate a `ComputeShader` or `RenderShader2d` object. Pass in your shader code as a string. List binding layouts. For compute shaders, provide a `workgroupCount` (a 2 or 3 dimensional array), and don't forget to specify a `@workgroup_size` inside your shader.
-7. Set up a render (or compute) function. Use `requestAnimationFrame` for render shaders. In this function, write all the buffers that need updating, then call `shader.pass()`, where `shader` is your `Shader` instance. Note: swap buffers are currently not supported, but are planned. In the future, if you are doing something fancy like double-buffering, you will also be able to provide a bindGroup name.
+7. Set up a render (or compute) function. Use `requestAnimationFrame` for render shaders. In this function, write all the buffers that need updating, then call `shader.pass()` for `RenderShader2d`s or `shader.dispatch()` for `ComputeShader`s, where `shader` is your `Shader` instance.
 8. To cleanup, stop calling the render or compute function. Call the `dispose()` function on your shader and on each buffer.
 
 ## Examples
 
 - [Hello Triangle](https://github.com/JSideris/simple-compute-shaders/tree/master/examples/hello-triangle): sipmle render pipeline.
+- [Bitonic Sort](https://github.com/JSideris/simple-compute-shaders/tree/master/examples/bitonic-sort): sort a large dataset on the GPU.
 - [Audio Processor](https://github.com/JSideris/simple-compute-shaders/tree/master/examples/audio-processor): compute DFT of an audio signal and render.
 
 # Usage
@@ -160,28 +161,76 @@ Constructs a pipeline for a compute shader. The `ComputeShaderProps` type is use
 
 await Shader.initialize();
 
-let myBuffer = new StorageBuffer({
-	dataType: "array<f32>",
-	canCopyDst: true,
-	initialValue: myData
-});
+	await Shader.initialize();
 
-const computeShader = new ComputeShader({
-	code: `
-		@compute @workgroup_size(8, 8)
-		fn main() {
-			// Compute logic here
-		}
-	`,
-	workgroupCount: [4, 4],
-	bindingLayouts: [
-		{ 
-			type: "storage", 
-			name: "dataBuffer", 
-			binding: myBuffer 
-		}
-	]
-});
+	this.dataBuffer = new StorageBuffer({
+		dataType: "array<f32>",
+		size: 2048,
+		canCopyDst: true,
+		canCopySrc: true
+	});
+
+	this.sortComputeShader = new ComputeShader({
+		code: `
+			fn bitonic_compare_swap(i: u32, j: u32, dir: bool) {
+				if ((data[i] > data[j]) == dir) {
+					let temp = data[i];
+					data[i] = data[j];
+					data[j] = temp;
+				}
+			}
+
+			@compute @workgroup_size(64)
+			fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+				let id = global_id.x;
+
+				// Perform bitonic sort using phases
+				for (var k = 2u; k <= 2048; k *= 2) {
+					for (var j = k / 2; j > 0; j /= 2) {
+						let ixj = id ^ j;
+						if (ixj > id) {
+							bitonic_compare_swap(id, ixj, (id & k) == 0);
+						}
+
+						// Synchronize threads within a workgroup.
+						workgroupBarrier();
+					}
+				}
+			}
+		`,
+		workgroupCount: [32, 1],
+		bindingLayouts: [
+			{
+				binding: this.dataBuffer,
+				name: "data",
+				type: "storage"
+			}
+		]
+	});
+
+	// Create a random array of floats.
+
+	let data = new Float32Array(2048);
+
+	for (let i = 0; i < data.length; i++) {
+		data[i] = Math.random() * 1000;
+	}
+
+	console.log("Unsorted data:", data);
+
+	// Write the data to the buffer.
+
+	this.dataBuffer.write(data);
+
+	// Sort the data.
+
+	this.sortComputeShader.dispatch();
+
+	// Read the data back.
+
+	let sortedData = await this.dataBuffer.read();
+
+	console.log("Sorted data:", sortedData);
 ```
 
 ### Render Shaders
@@ -274,13 +323,13 @@ Then you can import your shader as follows:
 import fragCode from "./frag.wgsl";
 ```
 
-## Executing Shader Passes
+## Executing Shader Programs
 
-To run a render or compute pass, simply call `shader.pass()`. Compute passes can be run any time and are syncronous. Run renders inside of a `requestAnimationFrame` callback.
+To run a render pass on a `RenderShader2d`, simply call `shader.pass()`. To dispatch a compute shader, call `shader.dispatch()`. Run renders inside of a `requestAnimationFrame` callback. Compute dispatches can be run any time and are syncronous. 
 
 ## How to Contribute
 
-Building this library to be as robust as possible was challenging, and is an ongoing project. Pull requests welcome.
+Building this library to be as robust as possible was challenging, and is an ongoing project. Suggestions, feedback, and bugfixes are welcome. For major changes to the API, speak with me first.
 
 ## Reporting Issues
 
