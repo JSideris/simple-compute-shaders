@@ -16,23 +16,21 @@ export default class ComputeShader extends Shader{
 		super._setupShader(GPUShaderStage.COMPUTE);
 	}
 
-	pass(props?: { bindGroup?: string, vertices?: GPUBuffer }) {
+	dispatch() {
 
-		this.lastBindGroup = props?.bindGroup || this.lastBindGroup;
+		// this.lastBindGroup = props?.bindGroup || this.lastBindGroup;
 
 		let commandEncoder = Shader.device.createCommandEncoder();
 		let passEncoder = commandEncoder.beginComputePass();
 
 		passEncoder.setPipeline(this.pipeline as GPUComputePipeline);
-		passEncoder.setBindGroup(0, this.bindGroups[props?.bindGroup ?? this.lastBindGroup]);
+		passEncoder.setBindGroup(0, this._bindGroups[this._lastBindGroup]);
 		passEncoder.dispatchWorkgroups(
 			this.props.workgroupCount[0], this.props.workgroupCount[1], this.props.workgroupCount[2]
 		);
 		passEncoder.end();
 
 		Shader.device.queue.submit([commandEncoder.finish()]);
-
-
 	}
 
 	_configurePipeline(extraCode: string, layout: GPUBindGroupLayout): void {

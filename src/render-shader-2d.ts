@@ -188,13 +188,10 @@ export default class RenderShader2d extends Shader{
 		return extraFragmentCode;
 	}
 
-	pass(props?: { bindGroup?: string }) {
+	pass() {
 
 		this.widthBuffer.write(new Float32Array([this.props.canvas.width]));
 		this.heightBuffer.write(new Float32Array([this.props.canvas.height]));
-
-		this.lastBindGroup = props?.bindGroup || this.lastBindGroup;
-
 
 		// TODO: try not creating the view each frame.
 		let view = this.canvasContext.getCurrentTexture().createView();
@@ -218,7 +215,7 @@ export default class RenderShader2d extends Shader{
 
 		passEncoder.setVertexBuffer(0, this.vertexBuffer);
 
-		passEncoder.setBindGroup(0, this.bindGroups[props?.bindGroup ?? this.lastBindGroup]);
+		passEncoder.setBindGroup(0, this._bindGroups[this._lastBindGroup]);
 
 		passEncoder.draw(6);
 		passEncoder.end();

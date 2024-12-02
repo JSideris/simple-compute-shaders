@@ -206,7 +206,7 @@ export abstract class ShaderBuffer {
 	 * @param {number} [length=this.sizeElements] - The number of elements to be read from the buffer.
 	 * @returns {Promise<Float32Array | Uint32Array>} - A promise that resolves to the copied data.
 	 */
-	async read(offset = 0, length: number = this.sizeBytes) {
+	async read(offset = 0, length: number = this.sizeElements) {
 		if (!this.props.canCopySrc) {
 			throw new Error("Buffer is not readable. Set `canCopySrc` to `true` in the buffer props.");
 		}

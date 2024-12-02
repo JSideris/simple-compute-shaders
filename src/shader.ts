@@ -87,8 +87,8 @@ export abstract class Shader {
 		return newBinding;
 	}
 
-	bindGroups: Record<string, GPUBindGroup> = {};
-	lastBindGroup: string;
+	_bindGroups: Record<string, GPUBindGroup> = {};
+	_lastBindGroup: string;
 	pipeline: GPUComputePipeline | GPURenderPipeline;
 	props: BaseShaderProps;
 
@@ -206,7 +206,7 @@ export abstract class Shader {
 
 		{ // 4. Bind groups.
 
-			this.lastBindGroup = this.allBindingGroupNames[0];
+			this._lastBindGroup = this.allBindingGroupNames[0];
 
 			// console.log(allBindingGroupNames);
 			Object.keys(this.allBindingGroupNames).forEach((key, i) => {
@@ -237,15 +237,13 @@ export abstract class Shader {
 				});
 
 				// console.log(key);
-				this.bindGroups[name] = bindGroup;
+				this._bindGroups[name] = bindGroup;
 			});
 		}
 	}
 
 	abstract _configurePipeline(extraCode: string, layout: GPUBindGroupLayout): void;
 	abstract _initialize(bindingLayouts: Array<BindingLayoutDef>): string;
-
-	abstract pass(props?: { bindGroup?: string });
 
 	dispose(){};
 }
