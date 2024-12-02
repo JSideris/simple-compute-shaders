@@ -167,76 +167,76 @@ Constructs a pipeline for a compute shader. The `ComputeShaderProps` type is use
 
 await Shader.initialize();
 
-	await Shader.initialize();
+await Shader.initialize();
 
-	this.dataBuffer = new StorageBuffer({
-		dataType: "array<f32>",
-		size: 2048,
-		canCopyDst: true,
-		canCopySrc: true
-	});
+this.dataBuffer = new StorageBuffer({
+    dataType: "array<f32>",
+    size: 2048,
+    canCopyDst: true,
+    canCopySrc: true
+});
 
-	this.sortComputeShader = new ComputeShader({
-		code: `
-			fn bitonic_compare_swap(i: u32, j: u32, dir: bool) {
-				if ((data[i] > data[j]) == dir) {
-					let temp = data[i];
-					data[i] = data[j];
-					data[j] = temp;
-				}
-			}
+this.sortComputeShader = new ComputeShader({
+    code: `
+        fn bitonic_compare_swap(i: u32, j: u32, dir: bool) {
+            if ((data[i] > data[j]) == dir) {
+                let temp = data[i];
+                data[i] = data[j];
+                data[j] = temp;
+            }
+        }
 
-			@compute @workgroup_size(64)
-			fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-				let id = global_id.x;
+        @compute @workgroup_size(64)
+        fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+            let id = global_id.x;
 
-				// Perform bitonic sort using phases
-				for (var k = 2u; k <= 2048; k *= 2) {
-					for (var j = k / 2; j > 0; j /= 2) {
-						let ixj = id ^ j;
-						if (ixj > id) {
-							bitonic_compare_swap(id, ixj, (id & k) == 0);
-						}
+            // Perform bitonic sort using phases
+            for (var k = 2u; k <= 2048; k *= 2) {
+                for (var j = k / 2; j > 0; j /= 2) {
+                    let ixj = id ^ j;
+                    if (ixj > id) {
+                        bitonic_compare_swap(id, ixj, (id & k) == 0);
+                    }
 
-						// Synchronize threads within a workgroup.
-						workgroupBarrier();
-					}
-				}
-			}
-		`,
-		workgroupCount: [32, 1],
-		bindingLayouts: [
-			{
-				binding: this.dataBuffer,
-				name: "data",
-				type: "storage"
-			}
-		]
-	});
+                    // Synchronize threads within a workgroup.
+                    workgroupBarrier();
+                }
+            }
+        }
+    `,
+    workgroupCount: [32, 1],
+    bindingLayouts: [
+        {
+            binding: this.dataBuffer,
+            name: "data",
+            type: "storage"
+        }
+    ]
+});
 
-	// Create a random array of floats.
+// Create a random array of floats.
 
-	let data = new Float32Array(2048);
+let data = new Float32Array(2048);
 
-	for (let i = 0; i < data.length; i++) {
-		data[i] = Math.random() * 1000;
-	}
+for (let i = 0; i < data.length; i++) {
+    data[i] = Math.random() * 1000;
+}
 
-	console.log("Unsorted data:", data);
+console.log("Unsorted data:", data);
 
-	// Write the data to the buffer.
+// Write the data to the buffer.
 
-	this.dataBuffer.write(data);
+this.dataBuffer.write(data);
 
-	// Sort the data.
+// Sort the data.
 
-	this.sortComputeShader.dispatch();
+this.sortComputeShader.dispatch();
 
-	// Read the data back.
+// Read the data back.
 
-	let sortedData = await this.dataBuffer.read();
+let sortedData = await this.dataBuffer.read();
 
-	console.log("Sorted data:", sortedData);
+console.log("Sorted data:", sortedData);
 ```
 
 ### Render Shaders
@@ -260,39 +260,39 @@ Constructs a new pipeline for a render shader, containing a built-in vertex stag
 await Shader.initialize();
 
 let myUniformBuffer = new UniformBuffer({
-	dataType: "vec4<f32>",
-	canCopyDst: true,
-	initialValue: [1,0,0,1] // Red
+    dataType: "vec4<f32>",
+    canCopyDst: true,
+    initialValue: [1,0,0,1] // Red
 });
 
 const renderShader = new RenderShader2d({
-	code: `
-		@fragment
-		fn main() -> @location(0) vec4<f32> {
-			return color; // value of the color uniform.
-		}
-	`,
-	bindingLayouts: [
-		{
-			type: "uniform", 
-			name: "color", 
-			binding: myUniformBuffer 
-		}
-	],
-	canvas: document.getElementById('myCanvas') as HTMLCanvasElement
+    code: `
+        @fragment
+        fn main() -> @location(0) vec4<f32> {
+            return color; // value of the color uniform.
+        }
+    `,
+    bindingLayouts: [
+        {
+            type: "uniform", 
+            name: "color", 
+            binding: myUniformBuffer 
+        }
+    ],
+    canvas: document.getElementById('myCanvas') as HTMLCanvasElement
 });
 
 function render(){
-	let now = Date.now() / 1000;
-	myUniformBuffer.write(new Float32Array([
-		(Math.sin(now) * 0.5 + 0.5),
-		(Math.sin(now * 1.667) * 0.5 + 0.5),
-		(Math.sin(now * 1.333) * 0.5 + 0.5),
-		1
-	]));
+    let now = Date.now() / 1000;
+    myUniformBuffer.write(new Float32Array([
+        (Math.sin(now) * 0.5 + 0.5),
+        (Math.sin(now * 1.667) * 0.5 + 0.5),
+        (Math.sin(now * 1.333) * 0.5 + 0.5),
+        1
+    ]));
 
-	renderShader.pass();
-	requestAnimationFrame(()=>{render();});
+    renderShader.pass();
+    requestAnimationFrame(()=>{render();});
 }
 
 requestAnimationFrame(()=>{render();});
@@ -318,8 +318,8 @@ For instance, in Webpack, you can add the following under your module rules:
 
 ```JavaScript
 {
-	test: /\.wgsl$/,
-	type: "asset/source"
+    test: /\.wgsl$/,
+    type: "asset/source"
 },
 ```
 
