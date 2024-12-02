@@ -1,8 +1,8 @@
 # Simple Compute Shaders
 
-[Simple Compute Shaders on Github](https://github.com/JSideris/simple-compute-shaders)
-[Simple Compute Shaders on NPM](https://www.npmjs.com/package/simple-compute-shaders)
-[Follow me on X](https://x.com/joshsideris)
+- [Simple Compute Shaders on Github](https://github.com/JSideris/simple-compute-shaders)
+- [Simple Compute Shaders on NPM](https://www.npmjs.com/package/simple-compute-shaders)
+- [Follow me on X](https://x.com/joshsideris)
 
 # Introduction
 
