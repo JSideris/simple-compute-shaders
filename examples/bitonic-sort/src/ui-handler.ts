@@ -11,11 +11,13 @@ export default class UIHandler {
 
         // Set global font to sans-serif
 		document.body.style.fontFamily = "sans-serif";
+		document.body.style.backgroundColor = "#222";
 
 		const h1 = document.createElement("h1");
 		h1.innerText = "Bitonic Sort";
 		h1.style.textAlign = "center";
 		h1.style.marginTop = "20px";
+		h1.style.color = "white";
 		document.body.appendChild(h1);
       
         // Wrapper div
