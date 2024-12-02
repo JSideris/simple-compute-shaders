@@ -1,6 +1,6 @@
 {
   "name": "simple-compute-shaders",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "This library is a simplified wrapper around the WebGPU API, designed to make it easier to create and run compute shaders and simple 2D render shaders without dealing with the complex details of the WebGPU setup. It allows developers to initialize WebGPU, create data buffers, write shaders, and execute compute or render passes, all with a streamlined interface. The library is suitable for both beginners who want to experiment with GPU programming and experienced developers looking to speed up prototyping.",
   "main": "dist/cjs/index.js",
   "module": "dist/esnext/index.js",
@@ -26,5 +26,31 @@
   "devDependencies": {
     "@webgpu/types": "^0.1.51",
     "typescript": "^5.7.2"
+  },
+  "keywords": [
+    "webgpu",
+    "compute shaders",
+    "gpu programming",
+    "graphics library",
+    "webgpu api",
+    "shader wrapper",
+    "2d rendering",
+    "gpu compute",
+    "javascript graphics",
+    "typescript gpu",
+    "simple graphics",
+    "web rendering",
+    "compute pipeline",
+    "gpu development",
+    "web shaders",
+    "high-performance computing",
+    "gpu acceleration",
+    "webgpu examples",
+    "gpu prototyping",
+    "developer tools"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JSideris/simple-compute-shaders.git"
   }
 }
