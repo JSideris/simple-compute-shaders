@@ -307,6 +307,17 @@ function render(){
 requestAnimationFrame(()=>{render();});
 ```
 
+#### Handling Screen/Canvas Resizes
+
+All you need to do is resize the canvas. The uniforms for canvasWidth and canvasHeight will be updated automatically.
+
+```typescript
+window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+});
+```
+
 ### BindingLayoutDef
 
 Each binding layout definition in your `bindingLayouts` field must satisfy the `BindingLayoutDef` type, as given:

@@ -25,6 +25,6 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 		outputData[k] = mag;
 	}
 	else{
-		outputData[k] = outputData[k] * 0.9 + mag * 0.1;
+		outputData[k] = outputData[k] * 0.95 + mag * 0.05;
 	}
 }

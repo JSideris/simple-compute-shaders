@@ -1,3 +1,5 @@
+// Uniforms are injected at runtime. Do not add them here.
+
 @fragment
 fn main(@location(0) fragCoord: vec4<f32>) -> @location(0) vec4<f32> {
 
@@ -32,31 +34,24 @@ fn main(@location(0) fragCoord: vec4<f32>) -> @location(0) vec4<f32> {
 		return vec4<f32>(0.2, 0.4, 1.0, 1.0);
 	}
 
-    let x = fragCoord.x;
-    // let screenWidth = 1.0; // Example width, replace with dynamic value if available.
-    let numBars = 128;
-    let barWidth = 1.0 / f32(numBars);
+	let x = fragCoord.x;
+	let numBars = 128;
+	let barWidth = 1.0 / f32(numBars);
+	let bucketIndex = i32(x / barWidth);
+	if (bucketIndex < 0 || bucketIndex >= i32(1000)) {
+		return vec4<f32>(0.0, 0.0, 0.0, 1.0);
+	} 
 
-    // Calculate which audio bucket this fragment belongs to.
-    let bucketIndex = i32(x / barWidth);
-    if (bucketIndex < 0 || bucketIndex >= i32(1000)) {
-        return vec4<f32>(0.0, 0.0, 0.0, 1.0); // Background color (black).
-    } 
+	let amplitude = dftData[bucketIndex];
+	let scaledAmplitude = amplitude * 10.0;
 
-    // Get the amplitude for this bucket and scale it.
-    let amplitude = dftData[bucketIndex];
-    let scaledAmplitude = amplitude * 10.0;
+	// Quantize the amplitude to create blocky frequency bars.
+	let blockSize = barWidth * canvasWidth / canvasHeight;
+	let quantizedHeight = floor(scaledAmplitude / (blockSize * 1000.0));
+	let blockY = floor(fragCoord.y / blockSize);
+	let nextBlockThreshold = (blockY + 1.0) * blockSize * 1000.0;
+	let alpha = clamp((scaledAmplitude - nextBlockThreshold) / (blockSize * 1000.0), 0.0, 1.0);
 
-    // Calculate the height of the bar on the screen.
-    let barHeight = scaledAmplitude / 1000.0;
-    if (fragCoord.y < barHeight) {
-        return vec4<f32>(
-			min(1.0, max(0.0, 1.0-fragCoord.x * 2.0)), 
-			fragCoord.y, 
-			min(1.0, max(0.0, fragCoord.x * 2.0)), 
-			1.0
-		); // Color of the bar (green).
-    }
 
 	var sum = 0.0;
 	for (var i: i32 = 0; i < 10; i = i + 1) {
@@ -64,6 +59,14 @@ fn main(@location(0) fragCoord: vec4<f32>) -> @location(0) vec4<f32> {
 	}
 	sum = (sum / 500.0) - 0.5;
 
-    return vec4<f32>(sum, sum, sum, 1.0); // Background color (black).
+	if (blockY < quantizedHeight) {
+		return vec4<f32>(
+			alpha * min(1.0, max(0.0, 1.0 - fragCoord.x * 2.0)) + (1.0 - alpha) * sum, 
+			alpha * fragCoord.y + (1.0 - alpha) * sum, 
+			alpha * min(1.0, max(0.0, fragCoord.x * 2.0)) + (1.0 - alpha) * sum, 
+			1.0
+		);
+	}
 
+	return vec4<f32>(sum, sum, sum, 1.0);
 }

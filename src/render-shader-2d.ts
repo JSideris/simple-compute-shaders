@@ -21,6 +21,7 @@ fn main(
 
 type RenderShader2dProps = BaseShaderProps & {
 	canvas: HTMLCanvasElement;
+	// blendMode?: 0
 } & (
 	{
 		/**
@@ -186,6 +187,19 @@ export default class RenderShader2d extends Shader{
 					targets: [
 						{
 							format: Shader.presentationFormat,
+							// TODO: add blend mode support.
+							// blend: {
+							// 	color: {
+							// 		srcFactor: 'src-alpha',
+							// 		dstFactor: 'one-minus-src-alpha',
+							// 		operation: 'add',
+							// 	},
+							// 	alpha: {
+							// 		srcFactor: 'src-alpha',
+							// 		dstFactor: 'one-minus-src-alpha',
+							// 		operation: 'add',
+							// 	},
+							// }
 						},
 					],
 				},

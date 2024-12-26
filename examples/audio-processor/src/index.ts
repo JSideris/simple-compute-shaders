@@ -26,7 +26,7 @@ document.body.style.overflow = "hidden";
 export default class Pipeline {
 	active: boolean = false;
 	computeFftShader: ComputeShader;
-	fftRenderShader: RenderShader2d;
+	dftRenderShader: RenderShader2d;
 
 	timeBuffer: ShaderBuffer;
 	stepBuffer: ShaderBuffer;
@@ -44,7 +44,14 @@ export default class Pipeline {
 	analyser: AnalyserNode;
 	dataArray: Float32Array;
 
-	constructor() { }
+	constructor() { 
+		window.addEventListener('resize', () => {
+			if(canvas){
+				canvas.width = window.innerWidth;
+				canvas.height = window.innerHeight;
+			}
+		});
+	}
 
 	async start(canvas: HTMLCanvasElement) {
 		{ // Check if the simulation is already active.
@@ -152,7 +159,7 @@ export default class Pipeline {
 				]
 			});
 
-			this.fftRenderShader = new RenderShader2d({
+			this.dftRenderShader = new RenderShader2d({
 				canvas: canvas,
 				code: renderWgsl,
 				bindingLayouts: [
@@ -258,7 +265,7 @@ export default class Pipeline {
 		this.dftComputeShader.dispatch();
 
 		// Render.
-		this.fftRenderShader.pass();
+		this.dftRenderShader.pass();
 
 		requestAnimationFrame(() => this.runPipeline());
 	}
