@@ -1,5 +1,6 @@
 import { BaseShaderProps, Shader } from "./shader";
 import { UniformBuffer } from "./shader-buffer";
+import { isValidWebGpuVarName } from "./util";
 
 const defaultVertexShader = /*WGSL*/`
 struct VertexOutput {
@@ -20,7 +21,30 @@ fn main(
 
 type RenderShader2dProps = BaseShaderProps & {
 	canvas: HTMLCanvasElement;
-}
+} & (
+	{
+		/**
+		 * @default "floats"
+		 */
+		sizeBufferStyle?: "floats";
+		/**
+		 * @default "canvasWidth"
+		 */
+		canvasWidthName?: string;
+		/**
+		 * @default "canvasHeight"
+		 */
+		canvasHeightName?: string;
+	} | {
+		sizeBufferStyle: "vector";
+		/**
+		 * @default "canvasSize"
+		 */
+		canvasSizeName?: string;
+	} | {
+		sizeBufferStyle: "none";
+	}
+);
 
 export default class RenderShader2d extends Shader{
 	pipeline: GPURenderPipeline;
@@ -30,19 +54,33 @@ export default class RenderShader2d extends Shader{
 	vertexBuffer: GPUBuffer;
 	widthBuffer: UniformBuffer;
 	heightBuffer: UniformBuffer;
+	sizeVectorBuffer: UniformBuffer;
 
 	constructor(props: RenderShader2dProps){
 		super(props);
 		this.props = props;
 
-		this.widthBuffer = new UniformBuffer({
-			dataType: "f32",
-			canCopyDst: true
-		});
-		this.heightBuffer = new UniformBuffer({
-			dataType: "f32",
-			canCopyDst: true
-		});
+		props.sizeBufferStyle = props.sizeBufferStyle ?? "floats";
+
+		if(props.sizeBufferStyle == "floats"){
+			this.widthBuffer = new UniformBuffer({
+				dataType: "f32",
+				canCopyDst: true
+			});
+			this.heightBuffer = new UniformBuffer({
+				dataType: "f32",
+				canCopyDst: true
+			});
+		}
+		else if(props.sizeBufferStyle == "vector"){
+			this.sizeVectorBuffer = new UniformBuffer({
+				dataType: "vec2<f32>",
+				canCopyDst: true
+			});
+		}
+		else if(props.sizeBufferStyle != "none"){
+			throw new Error("Invalid sizeBufferStyle. Must be 'floats', 'vector', or 'none'.");
+		}
 
 
 		if(!this.props.bindingLayouts){
@@ -68,20 +106,43 @@ export default class RenderShader2d extends Shader{
 			});
 		}
 
-		this.props.bindingLayouts.unshift(
-			{
-				binding: bindingW,
-				// bindGroups: bindGroupsW,
-				name: "canvasWidth",
-				type: "uniform",
-			},
-			{
-				binding: bindingH,
-				// bindGroups: bindGroupsH,
-				name: "canvasHeight",
-				type: "uniform",
+		if(!this.props.sizeBufferStyle) this.props.sizeBufferStyle = "floats";
+
+		if(this.props.sizeBufferStyle == "floats"){
+
+			if(this.props.canvasWidthName && !isValidWebGpuVarName(this.props.canvasWidthName)){
+				throw new Error("Invalid widthName. Must be a valid WGSL variable name.");
 			}
-		);
+			if(this.props.canvasHeightName && !isValidWebGpuVarName(this.props.canvasHeightName)){
+				throw new Error("Invalid heightName. Must be a valid WGSL variable name.");
+			}
+
+			this.props.bindingLayouts.unshift(
+				{
+					binding: bindingW,
+					// bindGroups: bindGroupsW,
+					name: this.props.canvasWidthName ?? "canvasWidth",
+					type: "uniform",
+				},
+				{
+					binding: bindingH,
+					// bindGroups: bindGroupsH,
+					name: this.props.canvasHeightName ?? "canvasHeight",
+					type: "uniform",
+				}
+			);
+		}
+		else if(this.props.sizeBufferStyle == "vector"){
+			if(this.props.canvasSizeName && !isValidWebGpuVarName(this.props.canvasSizeName)){
+				throw new Error("Invalid sizeBufferName. Must be a valid WGSL variable name.");
+			}
+
+			this.props.bindingLayouts.unshift({
+				binding: this.sizeVectorBuffer,
+				name: this.props.canvasSizeName ?? "canvasSize",
+				type: "uniform",
+			});
+		}
 
 		super._setupShader(GPUShaderStage.FRAGMENT);
 	}
@@ -190,8 +251,9 @@ export default class RenderShader2d extends Shader{
 
 	pass() {
 
-		this.widthBuffer.write(new Float32Array([this.props.canvas.width]));
-		this.heightBuffer.write(new Float32Array([this.props.canvas.height]));
+		if(this.widthBuffer) this.widthBuffer.write(new Float32Array([this.props.canvas.width]));
+		if(this.heightBuffer) this.heightBuffer.write(new Float32Array([this.props.canvas.height]));
+		if(this.sizeVectorBuffer) this.sizeVectorBuffer.write(new Float32Array([this.props.canvas.width, this.props.canvas.height]));
 
 		// TODO: try not creating the view each frame.
 		let view = this.canvasContext.getCurrentTexture().createView();
@@ -225,10 +287,18 @@ export default class RenderShader2d extends Shader{
 	}
 
 	dispose(): void {
-		this.widthBuffer.dispose();
-		this.widthBuffer = null;
-		this.heightBuffer.dispose();
-		this.heightBuffer = null;
+		if(this.widthBuffer){
+			this.widthBuffer.dispose();
+			this.widthBuffer = null;
+		}
+		if(this.heightBuffer){
+			this.heightBuffer.dispose();
+			this.heightBuffer = null;
+		}
+		if(this.sizeVectorBuffer){
+			this.sizeVectorBuffer.dispose();
+			this.sizeVectorBuffer = null;
+		}
 		this.vertexBuffer.destroy();
 		this.vertexBuffer = null;
 

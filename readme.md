@@ -253,6 +253,15 @@ Constructs a new pipeline for a render shader, containing a built-in vertex stag
 
 - **`canvas`**: `HTMLCanvasElement`. The HTML canvas element that will be used as the rendering target. This canvas is required for rendering the output of the fragment shader to the screen.
 
+- **`sizeBufferStyle`** (optional): `"floats"|"vector"|"none"`. Sets how the canvas size uniform(s) is/are passed into the fragment shader. When set to `"floats"` (default), the canvas size will be passed into two separate `float` uniforms for width and height. When set to `"vector"`, the canvas size will be passed in as a `vec2<float>` uniform. When set to `"none"`, the canvas size is not passed in. 
+
+- **canvasWidthName** (optional, only when `sizeBufferStyle` is `"floats"`): `string`. The name of the canvas width identifier that will be injected into the fragment shader.
+
+- **canvasHeightName** (optional, only when `sizeBufferStyle` is `"floats"`): `string`. The name of the canvas height identifier that will be injected into the fragment shader.
+
+- **canvasSizeName** (optional, only when `sizeBufferStyle` is `"vector"`): `string`. The name of the canvas size identifier that will be injected into the fragment shader.
+
+
 #### Example:
 
 ```typescript
