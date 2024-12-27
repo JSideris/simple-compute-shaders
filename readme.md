@@ -34,6 +34,7 @@ Small disclaimer: GPU programming is hard and complex. This library simplifies a
 ## Limitations
 
 - Buffer swapping and groups are not supported yet, but are coming soon.
+- It currently isn't possible to use blend modes for render shaders. But this will be added soon.
 - No vertex shaders or vertex buffers. A significant part of the complexity of GPU programming is dealing with vertex data. This library is for users who want to build compute shaders or do 2D rendering on a quad.
 - Only one shader entry point is supported.
 - GPUBufferUsage.MAP_WRITE and GPUBufferUsage.MAP_READ are currently unsupported.

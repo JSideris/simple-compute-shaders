@@ -3,11 +3,13 @@ import dftWgsl from "./shaders/dft.compute.wgsl";
 import renderWgsl from "./shaders/render.fragment.wgsl";
 
 let canvas = document.createElement('canvas');
+canvas.style.backgroundColor = "black";
 document.body.appendChild(canvas);
 
 let instructions = document.createElement('p');
 instructions.innerHTML = "Click anywhere to begin."
 instructions.style.position = "absolute";
+instructions.style.color = "white";
 instructions.style.top = "50%";
 instructions.style.left = "50%";
 instructions.style.transform = "translate(-50%, -50%)";
