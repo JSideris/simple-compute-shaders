@@ -1,0 +1,24 @@
+{
+  "name": "simple-compute-shaders-game-of-life",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack",
+    "start": "webpack serve --open"
+  },
+  "author": "Joshua Sideris",
+  "license": "MIT",
+  "devDependencies": {
+    "html-webpack-plugin": "^5.6.3",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.7.2",
+    "webpack": "^5.96.1",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.1.0"
+  },
+  "dependencies": {
+    "@webgpu/types": "^0.1.51",
+    "simple-compute-shaders": "^0.1.6"
+  }
+}

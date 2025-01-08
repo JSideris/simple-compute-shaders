@@ -27,13 +27,12 @@ document.body.style.overflow = "hidden";
 
 export default class Pipeline {
 	active: boolean = false;
-	computeFftShader: ComputeShader;
 	dftRenderShader: RenderShader2d;
 
 	timeBuffer: ShaderBuffer;
 	stepBuffer: ShaderBuffer;
 	audioBuffers: ShaderBuffer[];
-	fftBuffer: ShaderBuffer;
+	dftBuffer: ShaderBuffer;
 
 	frameCount: any;
 	dftComputeShader: ComputeShader;
@@ -128,7 +127,7 @@ export default class Pipeline {
 			];
 
 
-			this.fftBuffer = new StorageBuffer({
+			this.dftBuffer = new StorageBuffer({
 				dataType: "array<f32>",
 				size: 1000
 			});
@@ -149,7 +148,7 @@ export default class Pipeline {
 						type: "read-only-storage"
 					},
 					{
-						binding: this.fftBuffer,
+						binding: this.dftBuffer,
 						name: "outputData",
 						type: "storage"
 					},
@@ -179,7 +178,7 @@ export default class Pipeline {
 					{
 						type: "read-only-storage",
 						name: "dftData",
-						binding: this.fftBuffer
+						binding: this.dftBuffer
 					},
 					{
 						type: "uniform",
@@ -225,15 +224,11 @@ export default class Pipeline {
 				numberOfBuckets: 1000,
 			};
 		
-			// console.log(dataArray.length);
-		
-			// const amplitudes = computeFFT(dataArray, options);
-			// console.log(amplitudes);
 			this.audioData = dataArray;
 		}
 
 		// Write all the buffers.
-		// The render will draw the FFT and the waveform, but it would be
+		// The render will draw the DFT and the waveform, but it would be
 		// cool if the start of the waveform could connect to the end.
 		// To do this we need to choose a start and end point in the data
 		// that's close to 0.

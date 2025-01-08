@@ -33,7 +33,7 @@ module.exports = {
   },
   plugins: [
     new HtmlWebpackPlugin({
-      title: 'Audio Processor',
+      title: 'Game of Life',
     }),
   ],
   mode: 'development',

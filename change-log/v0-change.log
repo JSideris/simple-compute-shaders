@@ -1,0 +1,23 @@
+
+Unpublished
+
+- Added Game of Life example.
+
+2024-12-26 v0.1.6
+
+- Added configuration options for canvas size buffers.
+
+2024-12-02 v0.1.5
+
+- Improved bitonic sort example.
+- Add links to readme.
+- Minor improvements to documentation and exapmples.
+
+2024-12-02 v0.1.1
+
+- First stable beta version.
+- Made reading from buffers element-based rather than (inconsistently) byte-based.
+- Rename `pass` to `dispatch` for compute shaders.
+- Removed `pass` and `dispatch` function args.
+- Added bitonic sort example.
+- Improved documentation.

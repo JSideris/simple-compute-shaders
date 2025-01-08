@@ -33,7 +33,7 @@ module.exports = {
   },
   plugins: [
     new HtmlWebpackPlugin({
-      title: 'Simple WebGPU Example', // Title for the generated HTML file
+      title: 'Bitonic Sort',
     }),
   ],
   mode: 'development',

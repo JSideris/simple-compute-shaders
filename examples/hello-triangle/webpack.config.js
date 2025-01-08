@@ -29,7 +29,7 @@ module.exports = {
   },
   plugins: [
     new HtmlWebpackPlugin({
-      title: 'Simple WebGPU Example', // Title for the generated HTML file
+      title: 'Hello Triangle',
     }),
   ],
   mode: 'development',
