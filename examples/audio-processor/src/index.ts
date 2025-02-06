@@ -29,8 +29,6 @@ export default class Pipeline {
 	active: boolean = false;
 	dftRenderShader: RenderShader2d;
 
-	timeBuffer: ShaderBuffer;
-	stepBuffer: ShaderBuffer;
 	audioBuffers: ShaderBuffer[];
 	dftBuffer: ShaderBuffer;
 
@@ -97,16 +95,6 @@ export default class Pipeline {
 				canCopyDst: true
 			});
 
-			this.timeBuffer = new UniformBuffer({
-				dataType: "f32",
-				canCopyDst: true
-			});
-
-			this.stepBuffer = new UniformBuffer({
-				dataType: "u32",
-				canCopyDst: true
-			});
-
 			this.audioBuffers = [
 				new StorageBuffer({
 					dataType: "array<f32>",
@@ -152,11 +140,6 @@ export default class Pipeline {
 						name: "outputData",
 						type: "storage"
 					},
-					{
-						type: "uniform",
-						name: "time",
-						binding: this.timeBuffer
-					},
 				]
 			});
 
@@ -189,16 +172,6 @@ export default class Pipeline {
 						type: "uniform",
 						name: "endOffset",
 						binding: this.endOffsetBuffer
-					},
-					{
-						type: "uniform",
-						name: "time",
-						binding: this.timeBuffer
-					},
-					{
-						type: "uniform",
-						name: "frame",
-						binding: this.stepBuffer
 					},
 				],
 			});
@@ -250,12 +223,8 @@ export default class Pipeline {
 			}
 		}
 
-		let timeSinceStart = (Date.now() - this.startTime) / 1000;
-
 		this.startOffsetBuffer.write(new Uint32Array([startOffset]));
 		this.endOffsetBuffer.write(new Uint32Array([endOffset]));
-		this.timeBuffer.write(new Float32Array([timeSinceStart]));
-		this.stepBuffer.write(new Uint32Array([this.frameCount++]));
 		this.audioBuffers[0].write(new Float32Array(this.audioData));
 
 		// Compute the DFT.

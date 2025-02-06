@@ -9,10 +9,12 @@
 ## Overview
 This library is a simplified wrapper around the WebGPU API, designed to make it easier to create and run shaders without dealing with the complex details of the WebGPU setup. It allows developers to initialize WebGPU, create data buffers, write shaders, and execute compute or render passes, all with a streamlined interface. The library is suitable for both beginners who want to experiment with GPU programming and experienced developers looking to speed up prototyping.
 
-Small disclaimer: GPU programming is hard and complex. This library simplifies a great deal of the plumbing needed to do rapid prototyping and even build full-scale applications so that you can focus on writing shader code rather than wasting time on repetative boilerplate code. However, it's no substitute for having the right foundational knowledge on the following concepts. If you're new to graphics programming, I'd recommend having at least a basic understanding of the following things:
+## Some Prerequisite Knowledge Before You Start
+
+This library simplifies a great deal of the plumbing needed to do rapid prototyping and even build full-scale applications so that you can focus on writing shader code rather than wasting time on repetative boilerplate code. However, it's no substitute for having the right foundational knowledge on the following concepts. If you're new to graphics programming, I'd recommend having at least a basic understanding of the following things:
 
 - **GPU Basics**: Understanding how a GPU works, including the idea of parallel processing and the role of GPUs in rendering graphics or performing computations.
-- **Shader Programming**: Knowledge of what shaders are and how they function, specifically **vertex shaders**, **fragment shaders**, and **compute shaders**. A basic understanding of how to write shader code (e.g., using **WGSL** or similar shader languages) is useful. Try to understand the basics of **workgroups**, **blocks**, and **threads**.
+- **Shader Programming**: Knowledge of what shaders are and how they function, specifically **vertex shaders**, **fragment shaders**, and **compute shaders**. A basic understanding of how to write shader code (e.g., using **WGSL** or similar shader languages) is useful. Try to understand the basics of **workgroups**, and **threads**. You should [know how to calculate the number of threads based on the workgroup size and count, and how to determine which thread you are in within a compute shader](https://medium.com/@josh.sideris/mastering-thread-calculations-in-webgpu-workgroup-size-count-and-thread-identification-6b44a87a4764).
 - **WebGPU Concepts**: Familiarity with the basics of **WebGPU** API, such as how it is different from WebGL and its role in accessing GPU functionality from web browsers.
 - **Buffers and Textures**: Understanding GPU **buffers** and **textures** and their role in storing vertex data, image data, or other types of data required for rendering or computation.
 - **Pipeline and Bind Groups**: Knowledge of how GPU **pipelines** work to connect different shader stages, and how **bind groups** are used to provide data to shaders.
@@ -156,11 +158,19 @@ Once the `Shader` object has been initialized and your buffers are created, you 
 
 Constructs a pipeline for a compute shader. The `ComputeShaderProps` type is used to configure compute shaders. Below is a detailed explanation of each field in `ComputeShaderProps`:
 
-- **computeCode**: `string`. The WGSL code for the compute shader. This code should contain the `@compute` entry point named `main`. The library injects binding layout definitions automatically, so you don't need to declare bindings explicitly.
+- **`code`**: `string|Array<string>`. The WGSL code for the compute shader. This code should contain the `@compute` entry point named `main`. The library injects binding layout definitions automatically, so you don't need to declare bindings explicitly. Set `code` to an array of strings to modularize your code.
 
 - **`workgroupCount`**: `[number, number, number]` or `[number, number]`. Specifies the number of workgroups to be dispatched. This can be a 2D or 3D array, depending on the desired compute workload.
 
 - **`bindingLayouts`** (optional): `Array<BindingLayoutDef>`. An array defining the binding layouts used by the compute shader. This includes information such as the type of resource (`storage`, `uniform`, etc.), the data type (e.g., `u32`, `f32`), and the binding group configuration.
+
+- **`useExecutionCountBuffer`** (optional): `boolean`. Adds a uniform to the shader that counts the number of times the shader has been dispatched. Default value is `true`.
+
+- **`executionCountBufferName`** (optional): `string`. Sets the name of the execution count buffer. Default is `"execution_count"`.
+
+- **`useTimeBuffer`** (optional): `boolean`. Adds a uniform to the shader that has the time (in seconds) since very first call to `dispatch()`. Default value is `true`.
+
+- **`timeBufferName`** (optional): `string`. Sets the name of the time buffer. Default is `"time"`.
 
 #### Example:
 
@@ -248,19 +258,27 @@ console.log("Sorted data:", sortedData);
 
 Constructs a new pipeline for a render shader, containing a built-in vertex stage with a managed quad. The `RenderShader2dProps` type is used to configure render shaders. Below is a detailed explanation of each field in `RenderShader2dProps`:
 
-- **code**: `string`. The WGSL code for the fragment shader. This code should contain the `@fragment` entry point named `main`. As with the vertex shader, bindings are injected automatically by the library.
+- **`code`**: `string|Array<string>`. The WGSL code for the fragment shader. This code should contain the `@fragment` entry point named `main`. Bindings are injected automatically by the library. Set `code` to an array of strings to modularize your code.
 
-- **bindingLayouts** (optional): `Array<BindingLayoutDef>`. An array defining the binding layouts used by the render shader. This includes information such as the type of resource (`uniform`, `storage`, etc.), the data type (e.g., `f32`, `vec4<f32>`), and the binding group configuration.
+- **`bindingLayouts`** (optional): `Array<BindingLayoutDef>`. An array defining the binding layouts used by the render shader. This includes information such as the type of resource (`uniform`, `storage`, etc.), the data type (e.g., `f32`, `vec4<f32>`), and the binding group configuration.
 
 - **`canvas`**: `HTMLCanvasElement`. The HTML canvas element that will be used as the rendering target. This canvas is required for rendering the output of the fragment shader to the screen.
 
 - **`sizeBufferStyle`** (optional): `"floats"|"vector"|"none"`. Sets how the canvas size uniform(s) is/are passed into the fragment shader. When set to `"floats"` (default), the canvas size will be passed into two separate `float` uniforms for width and height. When set to `"vector"`, the canvas size will be passed in as a `vec2<float>` uniform. When set to `"none"`, the canvas size is not passed in. 
 
-- **canvasWidthName** (optional, only when `sizeBufferStyle` is `"floats"`): `string`. The name of the canvas width identifier that will be injected into the fragment shader.
+- **`canvasWidthName`** (optional, only when `sizeBufferStyle` is `"floats"`): `string`. The name of the canvas width identifier that will be injected into the fragment shader.
 
-- **canvasHeightName** (optional, only when `sizeBufferStyle` is `"floats"`): `string`. The name of the canvas height identifier that will be injected into the fragment shader.
+- **`canvasHeightName`** (optional, only when `sizeBufferStyle` is `"floats"`): `string`. The name of the canvas height identifier that will be injected into the fragment shader.
 
-- **canvasSizeName** (optional, only when `sizeBufferStyle` is `"vector"`): `string`. The name of the canvas size identifier that will be injected into the fragment shader.
+- **`canvasSizeName`** (optional, only when `sizeBufferStyle` is `"vector"`): `string`. The name of the canvas size identifier that will be injected into the fragment shader.
+
+- **`useExecutionCountBuffer`** (optional): `boolean`. Adds a uniform to the shader that counts the number of times the shader has been invoked. Default value is `true`.
+
+- **`executionCountBufferName`** (optional): `string`. Sets the name of the execution count buffer. Default is `"execution_count"`.
+
+- **`useTimeBuffer`** (optional): `boolean`. Adds a uniform to the shader that has the time (in seconds) since very first call to `pass()`. Default value is `true`.
+
+- **`timeBufferName`** (optional): `string`. Sets the name of the time buffer. Default is `"time"`.
 
 
 #### Example:
@@ -310,7 +328,7 @@ requestAnimationFrame(()=>{render();});
 
 #### Handling Screen/Canvas Resizes
 
-All you need to do is resize the canvas. The uniforms for canvasWidth and canvasHeight will be updated automatically.
+All you need to do is resize the canvas. When `sizeBufferStyle` in the `RenderShader2d`'s constructor is set to `"floats"` (default) or `"vector"`, the uniforms for the canvas size will be updated automatically before the next `pass` call.
 
 ```typescript
 window.addEventListener('resize', () => {

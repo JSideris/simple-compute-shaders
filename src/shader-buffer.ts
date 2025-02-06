@@ -57,20 +57,20 @@ type BufferProps = {
 	) & Usage;
 
 function calculateBufferSize(props: { dataType: string, size?: number }): number {
-	let sizeBytes = 4; // Default to the size of a primitive type (u32, i32, f32)
+	let nBytes = 4; // Default to the size of a primitive type (u32, i32, f32)
 
 	// Determine size for vector types
 	if (props.dataType.startsWith("vec2")) {
-		sizeBytes = 8; // 2 * 4 bytes
+		nBytes = 8; // 2 * 4 bytes
 	} else if (props.dataType.startsWith("vec3")) {
-		sizeBytes = 12; // 3 * 4 bytes
+		nBytes = 12; // 3 * 4 bytes
 	} else if (props.dataType.startsWith("vec4")) {
-		sizeBytes = 16; // 4 * 4 bytes
+		nBytes = 16; // 4 * 4 bytes
 	}
 
 	// Determine size for matrix types
 	if (props.dataType.startsWith("mat4x4")) {
-		sizeBytes = 64; // 4x4 matrix of f32, which is 16 * 4 bytes
+		nBytes = 64; // 4x4 matrix of f32, which is 16 * 4 bytes
 	}
 
 	// Determine size for array types
@@ -95,7 +95,7 @@ function calculateBufferSize(props: { dataType: string, size?: number }): number
 
 		// Use the `size` property to compute the total array size
 		if (props.size) {
-			sizeBytes = elementSize * props.size;
+			nBytes = elementSize * props.size;
 		} else {
 			throw new Error("Size must be provided for array types");
 		}
@@ -104,10 +104,10 @@ function calculateBufferSize(props: { dataType: string, size?: number }): number
 	// Determine size for texture types (abstract approximation)
 	if (props.dataType.startsWith("texture_2d")) {
 		// Assuming each texel is represented by the primitive type, which is typically 4 bytes per channel
-		sizeBytes = 4 * (props.size ?? 1); // Assuming `size` represents the number of texels
+		nBytes = 4 * (props.size ?? 1); // Assuming `size` represents the number of texels
 	}
 
-	return sizeBytes;
+	return nBytes;
 }
 
 export abstract class ShaderBuffer {
@@ -120,6 +120,8 @@ export abstract class ShaderBuffer {
 	props: BufferProps;
 
 	constructor(mainUsage: number, props: BufferProps) {
+
+		if(!Shader.isInitialized) throw new Error("Call `Shader.initialize()` before creating buffers.");
 
 		this.props = props;
 

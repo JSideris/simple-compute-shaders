@@ -1,4 +1,5 @@
-import { ShaderBuffer } from "./shader-buffer";
+import { ShaderBuffer, UniformBuffer } from "./shader-buffer";
+import { isValidWebGpuVarName } from "./util";
 
 var shaderInitialized = false;
 
@@ -12,15 +13,31 @@ type BindingLayoutDef = {
 	{
 		binding: ShaderBuffer
 	} 
-	// Not supported yet.
-	// | {
-	// 	bindGroups: Record<string, ShaderBuffer>
-	// }
+	| {
+		bindGroups: Record<string, ShaderBuffer>
+	}
 )
 
 export type BaseShaderProps = {
-	code: string;
+	code: string|Array<string>;
 	bindingLayouts?: Array<BindingLayoutDef>;
+	/**
+	 * @default "execution_counter"
+	 */
+	executionCountBufferName?: string;
+	/**
+	 * @default true
+	 */
+	useExecutionCountBuffer?: boolean;
+
+	/**
+	 * @default "time"
+	 */
+	timeBufferName?: string;
+	/**
+	 * @default true
+	 */
+	useTimeBuffer?: boolean;
 }
 
 
@@ -28,16 +45,15 @@ export type BaseShaderProps = {
 
 export abstract class Shader {
 	static device: GPUDevice;
-	// static commandEncoder: GPUCommandEncoder;
-	// static context: GPUCanvasContext;
-	// static canvas: HTMLCanvasElement;
 	static presentationFormat: GPUTextureFormat;
 	static adapter: GPUAdapter;
 	allBindingGroupNames: any[];
 
-	// fragmentCode: string;
-	// vertexCode: string;
-	// computeCode: string;
+	executionCountBuffer: UniformBuffer;
+	timeBuffer: UniformBuffer;
+	executionCount = 0;
+	time = 0;
+	lastTime = 0;
 
 	static get isInitialized() {
 		return shaderInitialized;
@@ -95,11 +111,22 @@ export abstract class Shader {
 	constructor(props: BaseShaderProps) {
 
 		this.props = props;
+
+		{ // Default props
+			if(this.props.useExecutionCountBuffer !== false) this.props.useExecutionCountBuffer = true;
+			if(this.props.useTimeBuffer !== false) this.props.useTimeBuffer = true;
+			if(this.props.useExecutionCountBuffer && !this.props.executionCountBufferName) this.props.executionCountBufferName = "execution_count";
+			if(this.props.useTimeBuffer && !this.props.timeBufferName) this.props.timeBufferName = "time";
+
+			if(!this.props.bindingLayouts){
+				this.props.bindingLayouts = [];
+			}
+		}
 		
 		this.allBindingGroupNames = [];
 		{ // Validation
 			// Ensure the shader class has been initialized.
-			if (!Shader.isInitialized) throw new Error("Call Shader.initialize before instantiating a shader.");
+			if (!Shader.isInitialized) throw new Error("Call Shader.initialize() before instantiating a shader pipeline.");
 		
 			let isMultiMode = false;
 			let groupNamesSet = new Set<string>();
@@ -161,8 +188,65 @@ export abstract class Shader {
 					}
 				}
 			}
+
+			if(this.props.useExecutionCountBuffer && !isValidWebGpuVarName(this.props.executionCountBufferName)){
+				throw new Error("Invalid executionCountBufferName. Must be a valid WGSL variable name.");
+			}
+			if(this.props.useTimeBuffer && !isValidWebGpuVarName(this.props.timeBufferName)){
+				throw new Error("Invalid timeBufferName. Must be a valid WGSL variable name.");
+			}
 		}
-		
+	
+		{ // Default buffers.
+			if(props.useTimeBuffer){
+				this.timeBuffer = new UniformBuffer({
+					dataType: "u32",
+					canCopyDst: true
+				});
+			}
+			if(props.useExecutionCountBuffer){
+				this.executionCountBuffer = new UniformBuffer({
+					dataType: "u32",
+					canCopyDst: true
+				});
+			}
+		}
+
+		{ // Built-in binding setup.
+			let bindingT = undefined;
+			let bindGroupsT = undefined;
+			let bindingEx = undefined;
+			let bindGroupsEx = undefined;
+
+			if(!this.props.bindingLayouts.length || this.props.bindingLayouts[0]["binding"]){
+				bindingT = this.timeBuffer;
+				bindingEx = this.executionCountBuffer;
+			}
+			else{
+				let groups = this.props.bindingLayouts[0]["bindGroups"];
+				bindGroupsT = {};
+				bindGroupsEx = {};
+				Object.keys(groups).forEach((key) => {
+					bindGroupsT[key] = this.timeBuffer;
+					bindGroupsEx[key] = this.executionCountBuffer;
+				});
+			}
+
+			if(this.props.useTimeBuffer){
+				this.props.bindingLayouts.unshift({
+					binding: this.timeBuffer,
+					name: this.props.timeBufferName,
+					type: "uniform",
+				});
+			}
+			if(this.props.useExecutionCountBuffer){
+				this.props.bindingLayouts.unshift({
+					binding: this.executionCountBuffer,
+					name: this.props.executionCountBufferName,
+					type: "uniform",
+				});
+			}
+		}
 	}
 
 	_setupShader(bindingVisibility: number) {

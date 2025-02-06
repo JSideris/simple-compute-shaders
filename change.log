@@ -1,7 +1,11 @@
 
-Unpublished
+2025-02-06 v0.1.7
 
 - Added Game of Life example.
+- Added better error messages for when a buffer is created when Shader hasn't been initialized.
+- Changed the default names of the canvas size buffers to snake case.
+- Added optional `execution_count` and `time` uniforms to all shaders.
+- All shader pipelines now accept arrays of strings for their code. Useful for modularization.
 
 2024-12-26 v0.1.6
 

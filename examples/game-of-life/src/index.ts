@@ -18,10 +18,6 @@ export default class Pipeline {
 	active: boolean = false;
 	renderShader: RenderShader2d;
 
-	timeBuffer: ShaderBuffer;
-	stepBuffer: ShaderBuffer;
-
-	frameCount: any;
 	golComputeShader: ComputeShader;
 
 	startTime = Date.now();
@@ -61,18 +57,6 @@ export default class Pipeline {
 		{ // Shader pipeline setup.
 			await Shader.initialize();
 
-			this.frameCount = 0;
-
-			this.timeBuffer = new UniformBuffer({
-				dataType: "f32",
-				canCopyDst: true
-			});
-
-			this.stepBuffer = new UniformBuffer({
-				dataType: "u32",
-				canCopyDst: true
-			});
-
 			this.dataBuffers = [
 				new StorageBuffer({
 					dataType: "array<u32>",
@@ -107,16 +91,6 @@ export default class Pipeline {
 						name: "nextState",
 						type: "storage"
 					},
-					{
-						type: "uniform",
-						name: "time",
-						binding: this.timeBuffer
-					},
-					{
-						type: "uniform",
-						name: "step",
-						binding: this.stepBuffer
-					},
 				]
 			});
 
@@ -135,16 +109,6 @@ export default class Pipeline {
 						// 	a2: this.audioBuffers[2]
 						// },
 					},
-					{
-						type: "uniform",
-						name: "time",
-						binding: this.timeBuffer
-					},
-					{
-						type: "uniform",
-						name: "frame",
-						binding: this.stepBuffer
-					},
 				],
 			});
 
@@ -155,15 +119,8 @@ export default class Pipeline {
 	}
 
 	runPipeline() {
-
-		let timeSinceStart = (Date.now() - this.startTime) / 1000;
-
-		this.timeBuffer.write(new Float32Array([timeSinceStart]));
-		
 		// Compute the game of life.
-		this.stepBuffer.write(new Uint32Array([this.frameCount++]));
 		this.golComputeShader.dispatch();
-		this.stepBuffer.write(new Uint32Array([this.frameCount++]));
 		this.golComputeShader.dispatch();
 
 		// Render.

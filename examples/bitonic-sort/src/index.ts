@@ -32,6 +32,8 @@ export default class Pipeline {
 
         this.sortComputeShader = new ComputeShader({
             code: bitonicSortWgsl,
+            useTimeBuffer: false,
+            useExecutionTimeBuffer: false,
             workgroupCount: [32, 1],
             bindingLayouts: [
                 {

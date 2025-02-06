@@ -18,6 +18,19 @@ export default class ComputeShader extends Shader{
 
 	dispatch() {
 
+		{ // Update built-in buffers
+			if(this.props.useExecutionCountBuffer) this.executionCountBuffer.write(new Uint32Array([this.executionCount++]));
+			if(this.props.useTimeBuffer) {
+				// Time in seconds:
+				let now = performance ? (performance.now() / 1000) : (Date.now() / 1000);
+				if(!this.lastTime) this.lastTime = now;
+				this.time += now - this.lastTime;
+				this.lastTime = now;
+
+				this.timeBuffer.write(new Float32Array([this.time]));
+			}
+		}
+
 		// this.lastBindGroup = props?.bindGroup || this.lastBindGroup;
 
 		let commandEncoder = Shader.device.createCommandEncoder();
@@ -34,7 +47,9 @@ export default class ComputeShader extends Shader{
 	}
 
 	_configurePipeline(extraCode: string, layout: GPUBindGroupLayout): void {
-		let code = extraCode + this.props.code;
+		let code = extraCode + (
+			typeof this.props.code === "string" ? this.props.code : this.props.code.join("\n")
+		);
 		let shaderModule = Shader.device.createShaderModule({ code: code });
 
 		this.pipeline = Shader.device.createComputePipeline({

@@ -48,9 +48,9 @@ class Renderer{
 				@fragment
 				fn main(@builtin(position) fragCoord: vec4<f32>) -> @location(0) vec4<f32> {
 					// Define three arbitrary coordinates for the triangle in normalized coordinates (0..1 range)
-					let v0 = vec2<f32>(0.25 * canvasWidth, 0.25 * canvasHeight); // Bottom-left
-					let v1 = vec2<f32>(0.75 * canvasWidth, 0.25 * canvasHeight); // Bottom-right
-					let v2 = vec2<f32>(0.5 * canvasWidth, 0.75 * canvasHeight);  // Top-center
+					let v0 = vec2<f32>(0.25 * canvas_width, 0.25 * canvas_height); // Bottom-left
+					let v1 = vec2<f32>(0.75 * canvas_width, 0.25 * canvas_height); // Bottom-right
+					let v2 = vec2<f32>(0.5 * canvas_width, 0.75 * canvas_height);  // Top-center
 
 					// Get the current fragment position
 					let p = fragCoord.xy;

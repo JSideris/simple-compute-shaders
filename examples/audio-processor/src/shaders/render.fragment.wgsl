@@ -3,14 +3,14 @@
 @fragment
 fn main(@location(0) fragCoord: vec4<f32>) -> @location(0) vec4<f32> {
 
-	let smallerSize = min(canvasWidth, canvasHeight);
+	let smallerSize = min(canvas_width, canvas_height);
 	let electricR = smallerSize * 0.25;
 
-	let cx = (fragCoord.x * canvasWidth);
-	let cy = (fragCoord.y * canvasHeight);
+	let cx = (fragCoord.x * canvas_width);
+	let cy = (fragCoord.y * canvas_height);
 
-	let relativeX = cx - canvasWidth / 2.0;
-	let relativeY = cy - canvasHeight / 2.0;
+	let relativeX = cx - canvas_width / 2.0;
+	let relativeY = cy - canvas_height / 2.0;
 
 	let r = sqrt(relativeX * relativeX + relativeY * relativeY) - electricR;
 
@@ -46,7 +46,7 @@ fn main(@location(0) fragCoord: vec4<f32>) -> @location(0) vec4<f32> {
 	let scaledAmplitude = amplitude * 10.0;
 
 	// Quantize the amplitude to create blocky frequency bars.
-	let blockSize = barWidth * canvasWidth / canvasHeight;
+	let blockSize = barWidth * canvas_width / canvas_height;
 	let quantizedHeight = floor(scaledAmplitude / (blockSize * 1000.0));
 	let blockY = floor(fragCoord.y / blockSize);
 	let nextBlockThreshold = (blockY + 1.0) * blockSize * 1000.0;

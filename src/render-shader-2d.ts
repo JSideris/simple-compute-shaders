@@ -29,17 +29,17 @@ type RenderShader2dProps = BaseShaderProps & {
 		 */
 		sizeBufferStyle?: "floats";
 		/**
-		 * @default "canvasWidth"
+		 * @default "canvas_width"
 		 */
 		canvasWidthName?: string;
 		/**
-		 * @default "canvasHeight"
+		 * @default "canvas_height"
 		 */
 		canvasHeightName?: string;
 	} | {
 		sizeBufferStyle: "vector";
 		/**
-		 * @default "canvasSize"
+		 * @default "canvas_size"
 		 */
 		canvasSizeName?: string;
 	} | {
@@ -61,88 +61,97 @@ export default class RenderShader2d extends Shader{
 		super(props);
 		this.props = props;
 
-		props.sizeBufferStyle = props.sizeBufferStyle ?? "floats";
-
-		if(props.sizeBufferStyle == "floats"){
-			this.widthBuffer = new UniformBuffer({
-				dataType: "f32",
-				canCopyDst: true
-			});
-			this.heightBuffer = new UniformBuffer({
-				dataType: "f32",
-				canCopyDst: true
-			});
-		}
-		else if(props.sizeBufferStyle == "vector"){
-			this.sizeVectorBuffer = new UniformBuffer({
-				dataType: "vec2<f32>",
-				canCopyDst: true
-			});
-		}
-		else if(props.sizeBufferStyle != "none"){
-			throw new Error("Invalid sizeBufferStyle. Must be 'floats', 'vector', or 'none'.");
+		{ // Default prop values.
+			if(!this.props.sizeBufferStyle) this.props.sizeBufferStyle = "floats";
+			if(this.props.sizeBufferStyle == "floats" && !this.props.canvasWidthName) this.props.canvasWidthName = "canvas_width";
+			if(this.props.sizeBufferStyle == "floats" && !this.props.canvasHeightName) this.props.canvasHeightName = "canvas_height";
+			if(this.props.sizeBufferStyle == "vector" && !this.props.canvasSizeName) this.props.canvasSizeName = "canvas_size";
 		}
 
+		{ // Validation
+			if(this.props.sizeBufferStyle == "floats"){
 
-		if(!this.props.bindingLayouts){
-			this.props.bindingLayouts = [];
-		}
-
-		let bindingW = undefined;
-		let bindGroupsW = undefined;
-		let bindingH = undefined;
-		let bindGroupsH = undefined;
-
-		if(!this.props.bindingLayouts.length || this.props.bindingLayouts[0]["binding"]){
-			bindingW = this.widthBuffer;
-			bindingH = this.heightBuffer;
-		}
-		else{
-			let groups = this.props.bindingLayouts[0]["bindGroups"];
-			bindGroupsW = {};
-			bindGroupsH = {};
-			Object.keys(groups).forEach((key) => {
-				bindGroupsW[key] = this.widthBuffer;
-				bindGroupsH[key] = this.heightBuffer;
-			});
-		}
-
-		if(!this.props.sizeBufferStyle) this.props.sizeBufferStyle = "floats";
-
-		if(this.props.sizeBufferStyle == "floats"){
-
-			if(this.props.canvasWidthName && !isValidWebGpuVarName(this.props.canvasWidthName)){
-				throw new Error("Invalid widthName. Must be a valid WGSL variable name.");
-			}
-			if(this.props.canvasHeightName && !isValidWebGpuVarName(this.props.canvasHeightName)){
-				throw new Error("Invalid heightName. Must be a valid WGSL variable name.");
-			}
-
-			this.props.bindingLayouts.unshift(
-				{
-					binding: bindingW,
-					// bindGroups: bindGroupsW,
-					name: this.props.canvasWidthName ?? "canvasWidth",
-					type: "uniform",
-				},
-				{
-					binding: bindingH,
-					// bindGroups: bindGroupsH,
-					name: this.props.canvasHeightName ?? "canvasHeight",
-					type: "uniform",
+				if(this.props.canvasWidthName && !isValidWebGpuVarName(this.props.canvasWidthName)){
+					throw new Error("Invalid widthName. Must be a valid WGSL variable name.");
 				}
-			);
+				if(this.props.canvasHeightName && !isValidWebGpuVarName(this.props.canvasHeightName)){
+					throw new Error("Invalid heightName. Must be a valid WGSL variable name.");
+				}
+			}
+			else if(this.props.sizeBufferStyle == "vector"){
+				if(this.props.canvasSizeName && !isValidWebGpuVarName(this.props.canvasSizeName)){
+					throw new Error("Invalid sizeBufferName. Must be a valid WGSL variable name.");
+				}
+			}
 		}
-		else if(this.props.sizeBufferStyle == "vector"){
-			if(this.props.canvasSizeName && !isValidWebGpuVarName(this.props.canvasSizeName)){
-				throw new Error("Invalid sizeBufferName. Must be a valid WGSL variable name.");
+
+		{ // Defaut buffer setup.
+
+			if(props.sizeBufferStyle == "floats"){
+				this.widthBuffer = new UniformBuffer({
+					dataType: "f32",
+					canCopyDst: true
+				});
+				this.heightBuffer = new UniformBuffer({
+					dataType: "f32",
+					canCopyDst: true
+				});
+			}
+			else if(props.sizeBufferStyle == "vector"){
+				this.sizeVectorBuffer = new UniformBuffer({
+					dataType: "vec2<f32>",
+					canCopyDst: true
+				});
+			}
+			else if(props.sizeBufferStyle != "none"){
+				throw new Error("Invalid sizeBufferStyle. Must be 'floats', 'vector', or 'none'.");
+			}
+		}
+
+		{ // Built-in binding setup.
+			let bindingW = undefined;
+			let bindGroupsW = undefined;
+			let bindingH = undefined;
+			let bindGroupsH = undefined;
+
+			if(!this.props.bindingLayouts.length || this.props.bindingLayouts[0]["binding"]){
+				bindingW = this.widthBuffer;
+				bindingH = this.heightBuffer;
+			}
+			else{
+				let groups = this.props.bindingLayouts[0]["bindGroups"];
+				bindGroupsW = {};
+				bindGroupsH = {};
+				Object.keys(groups).forEach((key) => {
+					bindGroupsW[key] = this.widthBuffer;
+					bindGroupsH[key] = this.heightBuffer;
+				});
 			}
 
-			this.props.bindingLayouts.unshift({
-				binding: this.sizeVectorBuffer,
-				name: this.props.canvasSizeName ?? "canvasSize",
-				type: "uniform",
-			});
+			if(this.props.sizeBufferStyle == "floats"){
+
+				this.props.bindingLayouts.unshift(
+					{
+						binding: bindingW,
+						// bindGroups: bindGroupsW,
+						name: this.props.canvasWidthName,
+						type: "uniform",
+					},
+					{
+						binding: bindingH,
+						// bindGroups: bindGroupsH,
+						name: this.props.canvasHeightName,
+						type: "uniform",
+					}
+				);
+			}
+			else if(this.props.sizeBufferStyle == "vector"){
+				this.props.bindingLayouts.unshift({
+					binding: this.sizeVectorBuffer,
+					name: this.props.canvasSizeName,
+					type: "uniform",
+				});
+			}
 		}
 
 		super._setupShader(GPUShaderStage.FRAGMENT);
@@ -151,7 +160,9 @@ export default class RenderShader2d extends Shader{
 	_configurePipeline(extraCode: string, layout: GPUBindGroupLayout): void {
 		
 		{ // Create the pipeline.
-			let fragmentCode = extraCode + this.props.code;
+			let fragmentCode = extraCode + (
+				typeof this.props.code === "string" ? this.props.code : this.props.code.join("\n")
+			);
 
 			let vertexShader = Shader.device.createShaderModule({ code: defaultVertexShader });
 			let fragmentShader = Shader.device.createShaderModule({ code: fragmentCode });
@@ -265,9 +276,22 @@ export default class RenderShader2d extends Shader{
 
 	pass() {
 
-		if(this.widthBuffer) this.widthBuffer.write(new Float32Array([this.props.canvas.width]));
-		if(this.heightBuffer) this.heightBuffer.write(new Float32Array([this.props.canvas.height]));
-		if(this.sizeVectorBuffer) this.sizeVectorBuffer.write(new Float32Array([this.props.canvas.width, this.props.canvas.height]));
+		{ // Update built-in buffers
+			if(this.widthBuffer) this.widthBuffer.write(new Float32Array([this.props.canvas.width]));
+			if(this.heightBuffer) this.heightBuffer.write(new Float32Array([this.props.canvas.height]));
+			if(this.sizeVectorBuffer) this.sizeVectorBuffer.write(new Float32Array([this.props.canvas.width, this.props.canvas.height]));
+			
+			if(this.props.useExecutionCountBuffer) this.executionCountBuffer.write(new Uint32Array([this.executionCount++]));
+			if(this.props.useTimeBuffer) {
+				// Time in seconds:
+				let now = performance ? (performance.now() / 1000) : (Date.now() / 1000);
+				if(!this.lastTime) this.lastTime = now;
+				this.time += now - this.lastTime;
+				this.lastTime = now;
+
+				this.timeBuffer.write(new Float32Array([this.time]));
+			}
+		}
 
 		// TODO: try not creating the view each frame.
 		let view = this.canvasContext.getCurrentTexture().createView();

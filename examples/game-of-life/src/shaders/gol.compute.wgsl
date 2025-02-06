@@ -11,11 +11,11 @@
 // var<storage, write> step : u32;
 
 @compute @workgroup_size(16, 16)
-fn main(@builtin(global_invocation_id) globalID : vec3<u32>) {
+fn main(@builtin(global_invocation_index) globalID : u32) {
     // Flatten the 2D index (x, y) into a 1D cell index.
-    let x = globalID.x;
-    let y = globalID.y;
-    let cellIndex = y * 1024u + x;
+    // let x = globalID.x;
+    // let y = globalID.y;
+    let cellIndex = globalID;
 
     let arrayIndex = cellIndex;
 
@@ -23,7 +23,7 @@ fn main(@builtin(global_invocation_id) globalID : vec3<u32>) {
 
     // On even frames, we progress the simulation.
     // But on odd frames, we copy the next state to the current state.
-    if(step % 2 == 1u){
+    if(execution_count % 2 == 1u){
         currentState[arrayIndex] = nextState[arrayIndex];
         return;
     }
