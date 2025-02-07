@@ -1,5 +1,5 @@
 
-2025-02-06 v0.1.7
+2025-02-06 v0.1.8
 
 - Added Game of Life example.
 - Added better error messages for when a buffer is created when Shader hasn't been initialized.

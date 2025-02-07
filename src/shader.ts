@@ -200,7 +200,7 @@ export abstract class Shader {
 		{ // Default buffers.
 			if(props.useTimeBuffer){
 				this.timeBuffer = new UniformBuffer({
-					dataType: "u32",
+					dataType: "f32",
 					canCopyDst: true
 				});
 			}
