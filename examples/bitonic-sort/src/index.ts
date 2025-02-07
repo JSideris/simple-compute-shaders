@@ -33,7 +33,7 @@ export default class Pipeline {
         this.sortComputeShader = new ComputeShader({
             code: bitonicSortWgsl,
             useTimeBuffer: false,
-            useExecutionTimeBuffer: false,
+            useExecutionCountBuffer: false,
             workgroupCount: [32, 1],
             bindingLayouts: [
                 {
@@ -71,7 +71,12 @@ export default class Pipeline {
         this.dataBuffer.write(this.data);
 
         // Sort the data
+        // Not very precise. Consider using device.createQuerySet() and device.getQuerySetResults() for more accurate timing.
+        let now1 = performance.now();
         this.sortComputeShader.dispatch();
+        let now2 = performance.now();
+        let time = now2 - now1;
+        // this.uiHandler.updateComputeTimeDisplay(time);
 
         // Read the data back
         let sortedData = await this.dataBuffer.read();

@@ -52,16 +52,27 @@ export default class UIHandler {
         // Middle Div: Compute Button
         const middleDiv = document.createElement("div");
         middleDiv.style.display = "flex";
+        middleDiv.style.flexDirection = "column";
         middleDiv.style.alignItems = "center";
         middleDiv.style.margin = "0 20px";
+        middleDiv.style.justifyContent = "center";
 
         const computeButton = document.createElement("button");
         computeButton.innerText = "Compute";
         computeButton.style.padding = "15px";
         computeButton.style.fontSize = "16px";
+        computeButton.style.display = "block";
         computeButton.onclick = () => this.pipeline.runPipeline();
 
+        const computeTimeLabel = document.createElement("div");
+        computeTimeLabel.style.textAlign = "center";
+        computeTimeLabel.style.width = "100%";
+        computeTimeLabel.style.color = "white";
+        computeTimeLabel.id = "comute-time-label";
+
         middleDiv.appendChild(computeButton);
+        middleDiv.appendChild(document.createElement("br"));
+        middleDiv.appendChild(computeTimeLabel);
         wrapper.appendChild(middleDiv);
 
         // Right Div: Sorted Data
@@ -111,5 +122,10 @@ export default class UIHandler {
         if (rightDiv) {
             rightDiv.innerHTML = sortedData.join(", ");
         }
+    }
+
+    updateComputeTimeDisplay(time: number) {
+        const computeTimeLabel = document.getElementById("comute-time-label")!;
+        computeTimeLabel.innerText = `${time.toFixed(4)}ms.`;
     }
 }
