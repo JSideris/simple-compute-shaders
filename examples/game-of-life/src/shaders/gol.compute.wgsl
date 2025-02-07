@@ -8,14 +8,12 @@
 // @group(0) @binding(1)
 // var<storage, write> nextState : array<u32>;
 
-// var<storage, write> step : u32;
-
 @compute @workgroup_size(16, 16)
-fn main(@builtin(global_invocation_index) globalID : u32) {
+fn main(@builtin(global_invocation_id) globalID : vec3<u32>) {
     // Flatten the 2D index (x, y) into a 1D cell index.
-    // let x = globalID.x;
-    // let y = globalID.y;
-    let cellIndex = globalID;
+    let x = globalID.x;
+    let y = globalID.y;
+    let cellIndex = y * 1024u + x;
 
     let arrayIndex = cellIndex;
 
