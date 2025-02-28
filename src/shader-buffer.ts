@@ -114,7 +114,7 @@ export abstract class ShaderBuffer {
 
 	buffer: GPUBuffer;
 	dataType: string;
-	baseType: "float" | "int";
+	baseType: "float" | "int" | "uint";
 	sizeBytes: number;
 	sizeElements: number = 1;
 	props: BufferProps;
@@ -149,15 +149,18 @@ export abstract class ShaderBuffer {
 		});
 
 		if (props.dataType.indexOf("f32") > -1) this.baseType = "float";
-		if (props.dataType.indexOf("u32") > -1) this.baseType = "int";
+		if (props.dataType.indexOf("u32") > -1) this.baseType = "uint";
 		if (props.dataType.indexOf("i32") > -1) this.baseType = "int";
 
 		if (props.initialValue) {
 			if (this.baseType == "float") {
 				new Float32Array(this.buffer.getMappedRange()).set(props.initialValue);
 			}
-			else if (this.baseType == "int") {
+			else if (this.baseType == "uint") {
 				new Uint32Array(this.buffer.getMappedRange()).set(props.initialValue);
+			}
+			else if (this.baseType == "int") {
+				new Int32Array(this.buffer.getMappedRange()).set(props.initialValue);
 			}
 			this.buffer.unmap();
 		}
@@ -165,10 +168,10 @@ export abstract class ShaderBuffer {
 
 	/**
 	 * Writes data to the buffer using COPY_DST, allowing data to be transferred from CPU to GPU.
-	 * @param {Float32Array | Uint32Array} value - The data to be written to the buffer.
+	 * @param {Float32Array | Uint32Array | Int32Array} value - The data to be written to the buffer.
 	 * @param {number} [offset=0] - The offset in elements from the start of the buffer where the data should be written.
 	 */
-	write(value: Float32Array | Uint32Array, offset = 0) {
+	write(value: Float32Array | Uint32Array | Int32Array, offset = 0) {
 		if (!this.props.canCopyDst) throw new Error("Buffer is not writable. Set `canCopyDst` to `true` in the buffer props.");
 		const offsetBytes = offset * this.sizeBytes / this.sizeElements;
 		Shader.device.queue.writeBuffer(this.buffer, offsetBytes, value);
@@ -206,9 +209,9 @@ export abstract class ShaderBuffer {
 	 * Asynchronously reads data from the buffer by copying it to a staging buffer with COPY_SRC usage.
 	 * @param {number} [offset=0] - The offset in elements from the start of the buffer where the data should be read from.
 	 * @param {number} [length=this.sizeElements] - The number of elements to be read from the buffer.
-	 * @returns {Promise<Float32Array | Uint32Array>} - A promise that resolves to the copied data.
+	 * @returns {Promise<Float32Array | Uint32Array | Int32Array>} - A promise that resolves to the copied data.
 	 */
-	async read(offset = 0, length: number = this.sizeElements) {
+	async read(offset = 0, length: number = this.sizeElements): Promise<Float32Array | Uint32Array | Int32Array> {
 		if (!this.props.canCopySrc) {
 			throw new Error("Buffer is not readable. Set `canCopySrc` to `true` in the buffer props.");
 		}
@@ -239,11 +242,15 @@ export abstract class ShaderBuffer {
 		const arrayBuffer = stagingBuffer.getMappedRange();
 
 		// Create the appropriate typed array based on the buffer type
-		let data: Float32Array | Uint32Array;
+		let data: Float32Array | Uint32Array | Int32Array;
 		if (this.baseType === "float") {
 			data = new Float32Array(new Float32Array(arrayBuffer));
-		} else {
+		} 
+		else if (this.baseType === "uint") {
 			data = new Uint32Array(new Uint32Array(arrayBuffer));
+		}
+		else if (this.baseType === "int") {
+			data = new Int32Array(new Int32Array(arrayBuffer));
 		}
 
 		// Unmap the buffer

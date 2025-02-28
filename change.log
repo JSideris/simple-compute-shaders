@@ -1,4 +1,12 @@
 
+2025-02-28
+
+- Added support for signed integer buffers.
+
+2025-02-19 v0.1.9
+
+- Made @webgpu/types a core dependency to fix potential build issues in some environments.
+
 2025-02-06 v0.1.8
 
 - Added Game of Life example.
