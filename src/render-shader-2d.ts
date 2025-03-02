@@ -266,7 +266,7 @@ export default class RenderShader2d extends Shader{
 		if (bindingLayouts) {
 			for (let i = 0; i < bindingLayouts.length; i++) {
 				let bl = bindingLayouts[i];
-				extraFragmentCode += Shader._getBindingCode(fragmentBindingCount++, bl, 1);
+				extraFragmentCode += Shader._getBindingCode(this.props.code, fragmentBindingCount++, bl, 1);
 			}
 		}
 		extraFragmentCode += `\r\n`;

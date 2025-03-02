@@ -70,7 +70,7 @@ export default class ComputeShader extends Shader{
 		if (bindingLayouts) {
 			for (let i = 0; i < bindingLayouts.length; i++) {
 				let bl = bindingLayouts[i];
-				extraComputeCode += Shader._getBindingCode(computeBindingCount++, bl);
+				extraComputeCode += Shader._getBindingCode(this.props.code, computeBindingCount++, bl);
 			}
 		}
 		extraComputeCode += `\r\n`;

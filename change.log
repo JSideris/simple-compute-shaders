@@ -1,5 +1,8 @@
+2025-03-02 v0.1.11
 
-2025-02-28
+- Added support for obfuscated binding mappings from the wgsl-plus utility.
+
+2025-02-28 v0.1.10
 
 - Added support for signed integer buffers.
 

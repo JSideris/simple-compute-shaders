@@ -80,26 +80,44 @@ export abstract class Shader {
 		return Shader.device;
 	}
 
-	static _getBindingCode(numb: number, bl: BindingLayoutDef, group: number = 0) {
-
-		let dataType:string;
-		if(bl["binding"]){
-			dataType = bl["binding"].dataType;
+	static _getBindingCode(code: string | string[], numb: number, bl: BindingLayoutDef, group: number = 0) {
+		let codeStr = typeof code === "string" ? code : code.join("\n");
+	
+		// Parse binding mappings from the obfuscated shader code
+		const bindingMap: { [originalName: string]: string } = {};
+		const lines = codeStr.split("\n");
+		for (const line of lines) {
+			const trimmedLine = line.trim();
+			if (trimmedLine.startsWith("//#!binding")) {
+				const parts = trimmedLine.split(" ");
+				if (parts.length >= 3) {
+					const originalName = parts[1];
+					const obfuscatedName = parts[2];
+					bindingMap[originalName] = obfuscatedName;
+				}
+			}
 		}
-		else{
+	
+		// Determine the name to inject: obfuscated if available, original otherwise
+		const originalName = bl.name;
+		const nameToUse = bindingMap[originalName] || originalName;
+	
+		// Extract the data type (unchanged from your original code)
+		let dataType: string;
+		if (bl["binding"]) {
+			dataType = bl["binding"].dataType;
+		} else {
 			dataType = bl["bindGroups"][Object.keys(bl["bindGroups"])[group]]?.dataType;
 		}
-		// || bl["bindGroups"][Object.keys(bl["bindGroups"])[group]];
-
-		if(!dataType) {
-			console.warn(`No data type found for binding ${bl.name}.`);
+	
+		if (!dataType) {
+			console.warn(`No data type found for binding ${originalName}.`);
 			return "";
 		}
-
-		let newBinding = `@binding(${numb}) @group(${0}) ${bl.type == "var" ? "var" : `var<${bl.type == "read-only-storage" ? "storage, read" : bl.type == "storage" ? "storage, read_write" : bl.type == "write-only-texture" ? "storage, read_write" : "uniform"}>`} ${bl.name}: ${dataType};\r\n`;
-
-		// console.log(newBinding);
-
+	
+		// Build the binding string with the correct name
+		let newBinding = `@binding(${numb}) @group(${group}) ${bl.type == "var" ? "var" : `var<${bl.type == "read-only-storage" ? "storage, read" : bl.type == "storage" ? "storage, read_write" : bl.type == "write-only-texture" ? "storage, read_write" : "uniform"}>`} ${nameToUse}: ${dataType};\r\n`;
+	
 		return newBinding;
 	}
 
