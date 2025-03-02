@@ -4,9 +4,14 @@
 - [Simple Compute Shaders on NPM](https://www.npmjs.com/package/simple-compute-shaders)
 - [Follow me on X](https://x.com/joshsideris)
 
+# See Also:
+
+- [WGSL-Plus](https://www.npmjs.com/package/wgsl-plus) - A linking and obfuscation utility for WGSL.
+
 # Introduction
 
 ## Overview
+
 This library is a simplified wrapper around the WebGPU API, designed to make it easier to create and run shaders without dealing with the complex details of the WebGPU setup. It allows developers to initialize WebGPU, create data buffers, write shaders, and execute compute or render passes, all with a streamlined interface. The library is suitable for both beginners who want to experiment with GPU programming and experienced developers looking to speed up prototyping.
 
 ## Some Prerequisite Knowledge Before You Start
@@ -32,6 +37,7 @@ This library simplifies a great deal of the plumbing needed to do rapid prototyp
 	- Smart buffer sizes and binding types.
 	- Better binding management that removes a lot of boilerplate.
 - Built-in compiler for adding buffers to shaders.
+- Integration with [WGSL-Plus](https://www.npmjs.com/package/wgsl-plus) obfuscated bindings.
 
 ## Limitations
 
@@ -351,9 +357,23 @@ Each binding layout definition in your `bindingLayouts` field must satisfy the `
 
 ## Shader Code Integration
 
-The easiest way to include WGSL code in your shader is to hard-code it as a JavaScript string. If you're soming a framework like Webpack or Rollup, you can configure it to import wgsl files directly.
+The easiest way to include WGSL code in your shader is to hard-code it as a JavaScript string. I recommend using [WGSL-Plus](https://www.npmjs.com/package/wgsl-plus) to compile your WGSL files into JS or TS strings. WGSL-Plus supports a modified WGSL syntax that adds linking, allowing you to break up your code, and has an obfuscation function that allows you to protect your WGSL code somewhat. Note that to use the obfuscator correctly, you need to list out your binding names at the top of your code like so:
 
-For instance, in Webpack, you can add the following under your module rules:
+```C++
+#binding data_binding_1
+#binding data_binding_2
+```
+
+These will be compiled as special comments at the top of your obfuscated code. I.e.:
+
+```WGSL
+//#!binding data_binding_1 _x0
+//#!binding data_binding_2 _x1
+```
+
+And Simple Compute Shaders will automatically map whatever binding names you provide to the obfuscated names.
+
+If you're soming a framework like Webpack or Rollup, you can configure it to import wgsl files directly. For instance, in Webpack, you can add the following under your module rules:
 
 ```JavaScript
 {
