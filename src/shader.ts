@@ -116,7 +116,7 @@ export abstract class Shader {
 		}
 	
 		// Build the binding string with the correct name
-		let newBinding = `@binding(${numb}) @group(${group}) ${bl.type == "var" ? "var" : `var<${bl.type == "read-only-storage" ? "storage, read" : bl.type == "storage" ? "storage, read_write" : bl.type == "write-only-texture" ? "storage, read_write" : "uniform"}>`} ${nameToUse}: ${dataType};\r\n`;
+		let newBinding = `@binding(${numb}) @group(${0}) ${bl.type == "var" ? "var" : `var<${bl.type == "read-only-storage" ? "storage, read" : bl.type == "storage" ? "storage, read_write" : bl.type == "write-only-texture" ? "storage, read_write" : "uniform"}>`} ${nameToUse}: ${dataType};\r\n`;
 	
 		return newBinding;
 	}
