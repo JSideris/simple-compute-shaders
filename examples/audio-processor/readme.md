@@ -9,6 +9,7 @@ An example of a full pipeline that accepts audio data from the microphone, passe
 - Rendering.
 - Shared buffers.
 - Real-time interaction.
+- Struct data types.
 
 # To Run:
 

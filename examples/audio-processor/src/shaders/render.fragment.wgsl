@@ -1,5 +1,10 @@
 // Uniforms are injected at runtime. Do not add them here.
 
+struct Offsets {
+    startOffset: i32,
+    endOffset: i32
+}
+
 @fragment
 fn main(@location(0) fragCoord: vec4<f32>) -> @location(0) vec4<f32> {
 
@@ -15,10 +20,10 @@ fn main(@location(0) fragCoord: vec4<f32>) -> @location(0) vec4<f32> {
 	let r = sqrt(relativeX * relativeX + relativeY * relativeY) - electricR;
 
 	let fullDataLength = 2048i;
-	let dataLength = fullDataLength - (startOffset) - (endOffset);
-	let angleIndex: i32 = (startOffset) + ((i32((((atan2(relativeY, relativeX) / 3.141592653589793) + 1.0) / 2.0) * f32(dataLength)) + dataLength * 3 / 4) % dataLength);
-	let nextDataIndex = ((angleIndex - startOffset + 1) % dataLength) + startOffset;
-	let prevDataIndex = ((angleIndex - startOffset - 1 + dataLength) % dataLength) + startOffset;
+	let dataLength = fullDataLength - (offsets.startOffset) - (offsets.endOffset);
+	let angleIndex: i32 = (offsets.startOffset) + ((i32((((atan2(relativeY, relativeX) / 3.141592653589793) + 1.0) / 2.0) * f32(dataLength)) + dataLength * 3 / 4) % dataLength);
+	let nextDataIndex = ((angleIndex - offsets.startOffset + 1) % dataLength) + offsets.startOffset;
+	let prevDataIndex = ((angleIndex - offsets.startOffset - 1 + dataLength) % dataLength) + offsets.startOffset;
 	let audio0 = f32(sign(prevDataIndex)) * audio[prevDataIndex];
 	let audio1 = f32(sign(angleIndex)) * audio[angleIndex];
 	let audio2 = f32(sign(nextDataIndex)) * audio[nextDataIndex];

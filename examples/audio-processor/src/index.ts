@@ -34,8 +34,9 @@ export default class Pipeline {
 
 	frameCount: any;
 	dftComputeShader: ComputeShader;
-	startOffsetBuffer: ShaderBuffer;
-	endOffsetBuffer: ShaderBuffer;
+	// startOffsetBuffer: ShaderBuffer;
+	// endOffsetBuffer: ShaderBuffer;
+	offsetBuffer: ShaderBuffer;
 
 	startTime = Date.now();
 	audioContext: AudioContext;
@@ -86,12 +87,20 @@ export default class Pipeline {
 
 			this.frameCount = 0;
 
-			this.startOffsetBuffer = new UniformBuffer({
-				dataType: "i32",
-				canCopyDst: true
-			});
-			this.endOffsetBuffer = new UniformBuffer({
-				dataType: "i32",
+			this.offsetBuffer = new UniformBuffer({
+				dataType: "struct",
+				structName: "Offsets",
+				fields: [
+					{
+						name: "startOffset",
+						dataType: "i32",
+					},
+					{
+						name: "endOffset",
+						dataType: "i32",
+					}
+				],
+				initialValue: [0, 0],
 				canCopyDst: true
 			});
 
@@ -145,13 +154,8 @@ export default class Pipeline {
 						},
 						{
 							type: "uniform",
-							name: "startOffset",
-							binding: this.startOffsetBuffer
-						},
-						{
-							type: "uniform",
-							name: "endOffset",
-							binding: this.endOffsetBuffer
+							name: "offsets",
+							binding: this.offsetBuffer
 						},
 					]
 				}]
@@ -204,8 +208,9 @@ export default class Pipeline {
 			}
 		}
 
-		this.startOffsetBuffer.write(new Uint32Array([startOffset]));
-		this.endOffsetBuffer.write(new Uint32Array([endOffset]));
+		// this.startOffsetBuffer.write(new Uint32Array([startOffset]));
+		// this.endOffsetBuffer.write(new Uint32Array([endOffset]));
+		this.offsetBuffer.write(new Uint32Array([startOffset, endOffset]));
 		this.audioBuffers[0].write(new Float32Array(this.audioData));
 
 		// Compute the DFT.

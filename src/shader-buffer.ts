@@ -2,9 +2,10 @@ import { Shader } from "./shader";
 
 type WgslPrimative = `${"u" | "f" | "i"}32`;
 type WgslVec = `vec${2 | 3 | 4}<${WgslPrimative}>`;
-type WgslMatrix = `mat4x4<${WgslPrimative}>`
+type WgslMatrix = `mat4x4<${WgslPrimative}>`;
 type WgslArray = `array<${WgslPrimative | WgslVec | WgslMatrix}>`;
-type WgslTexture = `texture_2d<${WgslPrimative}>`
+type WgslTexture = `texture_2d<${WgslPrimative}>`;
+type WgslStruct = `struct`;
 
 /**
  * Describes the buffer usage configuration for a GPU buffer.
@@ -44,19 +45,34 @@ type Usage = {
 type BufferProps = {
 	initialValue?: ArrayLike<number>,
 } & (
-		{
+	{
+		dataType: WgslPrimative | WgslVec | WgslMatrix;
+
+	} | {
+		dataType: WgslArray | WgslTexture;
+		/**
+		 * The number of elements (or texels) in the buffer.
+		 */
+		size: number,
+	} | {
+		dataType: WgslStruct;
+		structName: string;
+		fields: Array<{
+			name: string;
 			dataType: WgslPrimative | WgslVec | WgslMatrix;
+			offset?: number; // for manual alignment control
+		}>;
+	}
+) & Usage;
 
-		} | {
-			dataType: WgslArray | WgslTexture;
-			/**
-			 * The number of elements (or texels) in the buffer.
-			 */
-			size: number,
-		}
-	) & Usage;
+function calculateBufferSize(props: { dataType: string, size?: number, fields?: Array<{name: string, dataType: string, offset?: number}> }): number {
 
-function calculateBufferSize(props: { dataType: string, size?: number }): number {
+	// Handle struct types
+	if (props.dataType === "struct") {
+		if (!props.fields) throw new Error("Fields must be provided for struct types");
+		return calculateStructSize(props.fields, props.size || 1);
+	}
+
 	let nBytes = 4; // Default to the size of a primitive type (u32, i32, f32)
 
 	// Determine size for vector types
@@ -110,14 +126,58 @@ function calculateBufferSize(props: { dataType: string, size?: number }): number
 	return nBytes;
 }
 
+function calculateStructSize(fields: Array<{name: string, dataType: string, offset?: number}>, count: number = 1): number {
+	let offset = 0;
+	
+	for (const field of fields) {
+		const fieldAlign = getFieldAlignment(field.dataType);
+		const fieldSize = getFieldSize(field.dataType);
+		
+		// Align offset to field alignment
+		offset = Math.ceil(offset / fieldAlign) * fieldAlign;
+		
+		// Use manual offset if provided
+		if (field.offset !== undefined) {
+			offset = Math.max(offset, field.offset);
+		}
+		
+		offset += fieldSize;
+	}
+	
+	// Struct size must be aligned to largest field alignment
+	const structAlign = Math.max(...fields.map(f => getFieldAlignment(f.dataType)));
+	const structSize = Math.ceil(offset / structAlign) * structAlign;
+	
+	return structSize * count;
+}
+
+function getFieldAlignment(type: string): number {
+	if (type === 'f32' || type === 'u32' || type === 'i32') return 4;
+	if (type.startsWith('vec2')) return 8;
+	if (type.startsWith('vec3') || type.startsWith('vec4')) return 16;
+	if (type.startsWith('mat4x4')) return 16;
+	return 4;
+}
+
+function getFieldSize(type: string): number {
+	if (type === 'f32' || type === 'u32' || type === 'i32') return 4;
+	if (type.startsWith('vec2')) return 8;
+	if (type.startsWith('vec3')) return 12;
+	if (type.startsWith('vec4')) return 16;
+	if (type.startsWith('mat4x4')) return 64;
+	return 4;
+}
+
 export abstract class ShaderBuffer {
 
 	buffer: GPUBuffer;
 	dataType: string;
-	baseType: "float" | "int" | "uint";
+	baseType: "float" | "int" | "uint" | "mixed";
 	sizeBytes: number;
 	sizeElements: number = 1;
 	props: BufferProps;
+	structFields?: Array<{name: string, dataType: string, offset?: number}>; // Store for serialization
+	structName?: string;
 
 	constructor(mainUsage: number, props: BufferProps) {
 
@@ -135,11 +195,20 @@ export abstract class ShaderBuffer {
 		if (props.canCopyDst) bufferUsage |= GPUBufferUsage.COPY_DST;
 		if (props.canQueryResolve) bufferUsage |= GPUBufferUsage.QUERY_RESOLVE;
 
-		this.sizeElements = props["size"] || 1;
+		// Handle struct-specific logic
+		if (props.dataType === "struct") {
+			this.structFields = props.fields;
+			this.baseType = this.determineStructBaseType(props.fields);
+			this.sizeElements = props["size"] || 1;
+			this.structName = props.structName;
+		} else {
+			this.sizeElements = props["size"] || 1;
+		}
 
 		this.sizeBytes = calculateBufferSize({
 			dataType: props.dataType,
 			size: this.sizeElements,
+			fields: this.structFields,
 		});
 
 		this.buffer = Shader.device.createBuffer({
@@ -148,22 +217,89 @@ export abstract class ShaderBuffer {
 			mappedAtCreation: !!props.initialValue,
 		});
 
-		if (props.dataType.indexOf("f32") > -1) this.baseType = "float";
-		if (props.dataType.indexOf("u32") > -1) this.baseType = "uint";
-		if (props.dataType.indexOf("i32") > -1) this.baseType = "int";
+		if (props.dataType !== "struct") {
+			if (props.dataType.indexOf("f32") > -1) this.baseType = "float";
+			else if (props.dataType.indexOf("u32") > -1) this.baseType = "uint";
+			else if (props.dataType.indexOf("i32") > -1) this.baseType = "int";
+		}
+
 
 		if (props.initialValue) {
-			if (this.baseType == "float") {
-				new Float32Array(this.buffer.getMappedRange()).set(props.initialValue);
-			}
-			else if (this.baseType == "uint") {
-				new Uint32Array(this.buffer.getMappedRange()).set(props.initialValue);
-			}
-			else if (this.baseType == "int") {
-				new Int32Array(this.buffer.getMappedRange()).set(props.initialValue);
+			if (props.dataType === "struct") {
+				// For structs, interpret the ArrayLike as a flattened representation
+				const buffer = this.serializeStructFromArray(props.initialValue, this.structFields!);
+				new Uint8Array(this.buffer.getMappedRange()).set(new Uint8Array(buffer));
+			} else {
+				if (this.baseType == "float") {
+					new Float32Array(this.buffer.getMappedRange()).set(props.initialValue);
+				}
+				else if (this.baseType == "uint") {
+					new Uint32Array(this.buffer.getMappedRange()).set(props.initialValue);
+				}
+				else if (this.baseType == "int") {
+					new Int32Array(this.buffer.getMappedRange()).set(props.initialValue);
+				}
 			}
 			this.buffer.unmap();
 		}
+	}
+
+	private serializeStructFromArray(data: ArrayLike<number>, fields: Array<{name: string, dataType: string, offset?: number}>): ArrayBuffer {
+		const buffer = new ArrayBuffer(this.sizeBytes);
+		const view = new DataView(buffer);
+		let dataIndex = 0;
+		let offset = 0;
+
+		for (const field of fields) {
+			const fieldAlign = getFieldAlignment(field.dataType);
+			offset = Math.ceil(offset / fieldAlign) * fieldAlign;
+			
+			if (field.offset !== undefined) {
+				offset = Math.max(offset, field.offset);
+			}
+
+			const fieldSize = this.getFieldElementCount(field.dataType);
+			const values = Array.from(data).slice(dataIndex, dataIndex + fieldSize);
+			
+			this.writeFieldToBuffer(view, offset, field.dataType, values);
+			
+			dataIndex += fieldSize;
+			offset += getFieldSize(field.dataType);
+		}
+
+		return buffer;
+	}
+
+	private getFieldElementCount(type: string): number {
+		if (type === 'f32' || type === 'u32' || type === 'i32') return 1;
+		if (type.startsWith('vec2')) return 2;
+		if (type.startsWith('vec3')) return 3;
+		if (type.startsWith('vec4')) return 4;
+		if (type.startsWith('mat4x4')) return 16;
+		return 1;
+	}
+
+	private writeFieldToBuffer(view: DataView, offset: number, type: string, values: number[]) {
+		values.forEach((value, i) => {
+			if (type.includes('f32')) {
+				view.setFloat32(offset + i * 4, value, true);
+			} else if (type.includes('u32')) {
+				view.setUint32(offset + i * 4, value, true);
+			} else if (type.includes('i32')) {
+				view.setInt32(offset + i * 4, value, true);
+			}
+		});
+	}
+
+	private determineStructBaseType(fields: Array<{name: string, dataType: string, offset?: number}>): "float" | "int" | "uint" | "mixed" {
+		const types = new Set(fields.map(f => {
+			if (f.dataType.includes('f32')) return 'float';
+			if (f.dataType.includes('u32')) return 'uint';
+			if (f.dataType.includes('i32')) return 'int';
+			return 'unknown';
+		}));
+		
+		return types.size === 1 ? Array.from(types)[0] as any : 'mixed';
 	}
 
 	/**
@@ -243,7 +379,10 @@ export abstract class ShaderBuffer {
 
 		// Create the appropriate typed array based on the buffer type
 		let data: Float32Array | Uint32Array | Int32Array;
-		if (this.baseType === "float") {
+		if (this.dataType === "struct") {
+			// For structs, return a flattened array representation
+			data = this.deserializeStructToArray(arrayBuffer, this.structFields!);
+		} else if (this.baseType === "float") {
 			data = new Float32Array(new Float32Array(arrayBuffer));
 		} 
 		else if (this.baseType === "uint") {
@@ -262,6 +401,61 @@ export abstract class ShaderBuffer {
 		return data;
 	}
 
+	private deserializeStructToArray(buffer: ArrayBuffer, fields: Array<{name: string, dataType: string, offset?: number}>): Float32Array | Uint32Array | Int32Array {
+		const view = new DataView(buffer);
+		const result: number[] = [];
+		let offset = 0;
+
+		for (const field of fields) {
+			const fieldAlign = getFieldAlignment(field.dataType);
+			offset = Math.ceil(offset / fieldAlign) * fieldAlign;
+			
+			if (field.offset !== undefined) {
+				offset = Math.max(offset, field.offset);
+			}
+
+			const values = this.readFieldFromBuffer(view, offset, field.dataType);
+			result.push(...(Array.isArray(values) ? values : [values]));
+			offset += getFieldSize(field.dataType);
+		}
+
+		// Return appropriate typed array based on struct's predominant type
+		if (this.baseType === "float") {
+			return new Float32Array(result);
+		} else if (this.baseType === "uint") {
+			return new Uint32Array(result);
+		} else if (this.baseType === "int") {
+			return new Int32Array(result);
+		} else {
+			// Mixed type - default to Float32Array
+			return new Float32Array(result);
+		}
+	}
+
+	private readFieldFromBuffer(view: DataView, offset: number, type: string): number | number[] {
+		if (type === 'f32') {
+			return view.getFloat32(offset, true);
+		} else if (type === 'u32') {
+			return view.getUint32(offset, true);
+		} else if (type === 'i32') {
+			return view.getInt32(offset, true);
+		} else if (type.startsWith('vec')) {
+			const componentCount = parseInt(type[3]);
+			const components = [];
+			for (let i = 0; i < componentCount; i++) {
+				if (type.includes('f32')) {
+					components.push(view.getFloat32(offset + i * 4, true));
+				} else if (type.includes('u32')) {
+					components.push(view.getUint32(offset + i * 4, true));
+				} else if (type.includes('i32')) {
+					components.push(view.getInt32(offset + i * 4, true));
+				}
+			}
+			return components;
+		}
+		
+		return 0;
+	}
 
 	// /**
 	//  * Asynchronously reads data directly from the buffer by mapping it with MAP_READ usage.

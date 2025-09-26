@@ -210,6 +210,11 @@ export abstract class Shader {
 						// Extract the data type (unchanged from your original code)
 						let dataType: string = bg[b].binding?.dataType;
 					
+						if (dataType === "struct") {
+							// Instead of using struct as the data type, we use the name of the struct.
+							dataType = bg[b].binding?.structName;
+						}
+
 						if (!dataType) {
 							console.warn(`No data type found for binding ${originalName}.`);
 							continue;

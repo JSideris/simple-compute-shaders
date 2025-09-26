@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "build": "webpack",
-    "start": "webpack serve --open"
+    "start": "webpack serve --open",
+    "upgrade": "npm cache clean --force && npm install simple-compute-shaders@beta"
   },
   "author": "Joshua Sideris",
   "license": "MIT",
@@ -19,6 +20,6 @@
   },
   "dependencies": {
     "@webgpu/types": "^0.1.51",
-    "simple-compute-shaders": "^0.2.0"
+    "simple-compute-shaders": "^0.2.1-beta.4"
   }
 }

@@ -37,6 +37,8 @@ This library simplifies a great deal of the plumbing needed to do rapid prototyp
 	- Smart buffer sizes and binding types.
 	- Better binding management that removes a lot of boilerplate.
 - Built-in compiler for adding buffers to shaders.
+- Binding layouts and groups, buffer swapping support.
+- Supports most buffer data types including primitives, arrays, matrices, structs, and various combinations thereof.
 - Integration with [WGSL-Plus](https://www.npmjs.com/package/wgsl-plus) obfuscated bindings.
 
 ## Limitations
@@ -51,8 +53,11 @@ This library simplifies a great deal of the plumbing needed to do rapid prototyp
 - **Browser Support**: This library relies on the WebGPU API, which is relatively widely supported, but still not ubiquitous.
 - **WebGPU Enabled**: WebGPU must be enabled in the browser. This may require enabling experimental features or flags.
 
-
 # Getting Started
+
+## View Examples
+
+Clone this repository locally and check what's in the examples folder. You can use one of these as a starting point for your project. A description of available examples can be found below.
 
 ## Installation
 
@@ -69,7 +74,7 @@ npm i simple-compute-shaders
 3. Initialize `Shader` by calling `Shader.initialize()`. This is required once per application.
 4. Define your GPU buffers (data you'll be passing into or reading from the GPU).
 5. Instantiate a `ComputeShader` or `RenderShader2d` object. Pass in your shader code as a string. List binding layouts. For compute shaders, provide a `workgroupCount` (a 2 or 3 dimensional array), and don't forget to specify a `@workgroup_size` inside your shader.
-7. Set up a render (or compute) function. Use `requestAnimationFrame` for render shaders. In this function, write all the buffers that need updating, then call `shader.pass()` for `RenderShader2d`s or `shader.dispatch()` for `ComputeShader`s, where `shader` is your `Shader` instance.
+7. Set up a render (or compute) function. Use `requestAnimationFrame` for render shaders. In this function, write all the buffers that need updating, then call `shader.pass()` for `RenderShader2d`s or `shader.dispatch()` for `ComputeShader`s, where `shader` is your `Shader` instance. If you are doing buffer swapping, you can specify which group to swap in for each layout when calling `pass` or `dispatch`.
 8. To cleanup, stop calling the render or compute function. Call the `dispose()` function on your shader and on each buffer.
 
 ## Examples
@@ -77,6 +82,7 @@ npm i simple-compute-shaders
 - [Hello Triangle](https://github.com/JSideris/simple-compute-shaders/tree/master/examples/hello-triangle): sipmle render pipeline.
 - [Bitonic Sort](https://github.com/JSideris/simple-compute-shaders/tree/master/examples/bitonic-sort): sort a large dataset on the GPU.
 - [Audio Processor](https://github.com/JSideris/simple-compute-shaders/tree/master/examples/audio-processor): compute DFT of an audio signal and render.
+- [Game Of Life](https://github.com/JSideris/simple-compute-shaders/tree/master/examples/game-of-life): full simulation of a classic 2D tile-based 0-player game.
 
 # Usage
 
@@ -113,9 +119,21 @@ More details on the `canCopy-` and `canMap-` flags can be found in the `Reading 
 
 Supported values for `dataType` are:
 
-`u32`, `f32`, `i32`, `vec2<u32>`, `vec2<f32>`, `vec2<i32>`, `vec3<u32>`, `vec3<f32>`, `vec3<i32>`, `vec4<u32>`, `vec4<f32>`, `vec4<i32>`, `mat4x4<u32>`, `mat4x4<f32>`, `mat4x4<i32>`, `texture_2d<u32>`, `texture_2d<f32>`, `texture_2d<i32>`, `array<u32>`, `array<f32>`, `array<i32>`, `array<vec2<u32>>`, `array<vec2<f32>>`, `array<vec2<i32>>`, `array<vec3<u32>>`, `array<vec3<f32>>`, `array<vec3<i32>>`, `array<vec4<u32>>`, `array<vec4<f32>>`, `array<vec4<i32>>`, `array<mat4x4<u32>>`, `array<mat4x4<f32>>`, `array<mat4x4<i32>`
+`u32`, `f32`, `i32`, `vec2<u32>`, `vec2<f32>`, `vec2<i32>`, `vec3<u32>`, `vec3<f32>`, `vec3<i32>`, `vec4<u32>`, `vec4<f32>`, `vec4<i32>`, `mat4x4<u32>`, `mat4x4<f32>`, `mat4x4<i32>`, `texture_2d<u32>`, `texture_2d<f32>`, `texture_2d<i32>`, `array<u32>`, `array<f32>`, `array<i32>`, `array<vec2<u32>>`, `array<vec2<f32>>`, `array<vec2<i32>>`, `array<vec3<u32>>`, `array<vec3<f32>>`, `array<vec3<i32>>`, `array<vec4<u32>>`, `array<vec4<f32>>`, `array<vec4<i32>>`, `array<mat4x4<u32>>`, `array<mat4x4<f32>>`, `array<mat4x4<i32>`, `struct`
 
 If the `dataType` is set to an `array<T>` or a `texture_2d<T>`, you must provide a `size` in array elements or texels. For example, each element of a `array<mat4x4<f32>>` only contributes 1 to `size`, even though it requires 16 float values in the source array, and will occupy 64 bytes of space on the GPU. Simple Compute Shaders will do that conversion for you when setting up the buffer.
+
+If the `dataType` is set to `struct`, you will need to provide a `name`, which matches the name of the struct in code, and an array of fields in the struct via the `field` field, which has the following data structure:
+
+```
+{
+    structName: string, // The name of the struct defined in your shader code.
+    dataType: WgslPrimative | WgslVec | WgslMatrix, // datatypes for these can be found above.
+    offset?: number // for optional offset control
+}[]
+```
+
+[Audio Processor](https://github.com/JSideris/simple-compute-shaders/tree/master/examples/audio-processor) has a complete example of the struct data type usage.
 
 ## Reading and Writing Buffer Data
 
@@ -402,6 +420,84 @@ import fragCode from "./frag.wgsl";
 ## Executing Shader Programs
 
 To run a render pass on a `RenderShader2d`, simply call `shader.pass()`. To dispatch a compute shader, call `shader.dispatch()`. Run renders inside of a `requestAnimationFrame` callback. Compute dispatches can be run any time and are syncronous. 
+
+## Layout Configuration & Buffer Swapping
+
+When constructing a shader, you specify the buffer layouts. Shaders can have multiple layouts. Each layout can have multiple bind groups, and each bind group can have multiple bindings associated with it.
+
+For example, consider the Hello Triangle sample render shader:
+
+```TypeScript
+this.renderShader = new RenderShader2d({
+    code: shaderCode,
+    bindingLayouts: [{
+        default: [
+            {
+                type: "uniform", 
+                name: "color", 
+                binding: this.colorBuffer 
+            }
+        ]
+    }],
+    canvas: this.canvas
+});
+```
+
+The `bindingLayouts` field accepts an array of layouts. In most cases, you won't need more than one layout per shader. However, internally, an extra layout is created for built-in uniforms like `canvas_size`, `time`, etc. The layout index corresponds to the @group attribute in your shader code, which is automatically injected by Simple Compute Shaders at runtime.
+
+Within each layout, you must specify a list of swappable named bind groups. Usually you only need one group per layout. The exception is when you want to have the ability to swap values for things like double-buffering, or swapping inputs with outputs. A good practice is to create a layout with all your non-swappable buffers with a single group (named `default` or anything else - it only matters for swappable layouts), then create one layout per swappable buffer.
+
+Each named group in a layout contains an array of binding definitions with a name (that will be the name for this binding that's generated in code), the type of buffer, and a reference to the actual buffer to associate with this binding. The binding names and types must match and be in the correct order for each group within a layout or you'll get a runtime error.
+
+The [Game Of Life](https://github.com/JSideris/simple-compute-shaders/tree/master/examples/game-of-life) example has a fully working implementation of buffer swapping:
+
+```WGSL
+this.golComputeShader = new ComputeShader({
+    code: dftWgsl,
+    workgroupCount: [64, 64],
+    bindingLayouts: [{
+        group1: [
+            {
+                binding: this.dataBuffers[0],
+                name: "currentState",
+                type: "storage"
+            },
+            {
+                binding: this.dataBuffers[1],
+                name: "nextState",
+                type: "storage"
+            },
+        ],
+        group2: [
+            {
+                binding: this.dataBuffers[1],
+                name: "currentState",
+                type: "storage"
+            },
+            {
+                binding: this.dataBuffers[0],
+                name: "nextState",
+                type: "storage"
+            },
+        ]
+    }]
+});
+```
+
+In this example, one layout is explicitly created containing two groups. Depending on which group is swapped in, data will either flow from this.dataBuffers[0] to this.dataBuffers[1], or from this.dataBuffers[1] to this.dataBuffers[0]. In the WGSL code, the shader doesn't need to know about what buffer is swapped it; it just uses the names `currentStage` and `nextStage`.
+
+When when running a single step of the simulation, you need to specify which buffer you want swapped in. 
+
+```TypeScript
+this.golComputeShader.dispatch({
+    0: this.swapState == 0 ? "group1" : "group2",
+});
+this.swapState = 1 - this.swapState;
+```
+
+This is optional for non-swappable layouts. If you don't specify which group to use, the first one in the collection will be used.
+
+In the above example, the key (in this case with value 0) corresponds to the index of the layout whose group you want to set. So you could potentially have a shader with many separate swappable groups that operate independently of each other.
 
 ## How to Contribute
 
