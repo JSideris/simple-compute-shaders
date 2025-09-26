@@ -35,13 +35,15 @@ export default class Pipeline {
             useTimeBuffer: false,
             useExecutionCountBuffer: false,
             workgroupCount: [32, 1],
-            bindingLayouts: [
-                {
-                    binding: this.dataBuffer,
-                    name: "data",
-                    type: "storage",
-                },
-            ],
+            bindingLayouts: [{
+                default: [
+                    {
+                        binding: this.dataBuffer,
+                        name: "data",
+                        type: "storage",
+                    },
+                ]
+            }],
         });
 
         // Set up the UI

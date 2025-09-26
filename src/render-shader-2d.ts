@@ -1,5 +1,6 @@
-import { BaseShaderProps, Shader } from "./shader";
+import { Shader } from "./shader";
 import { UniformBuffer } from "./shader-buffer";
+import type { BaseShaderProps } from "./shader-types";
 import { isValidWebGpuVarName } from "./util";
 
 const defaultVertexShader = /*WGSL*/`
@@ -85,71 +86,75 @@ export default class RenderShader2d extends Shader{
 			}
 		}
 
-		{ // Defaut buffer setup.
-
-			if(props.sizeBufferStyle == "floats"){
-				this.widthBuffer = new UniformBuffer({
-					dataType: "f32",
-					canCopyDst: true
-				});
-				this.heightBuffer = new UniformBuffer({
+		{ // Internal binding layout.
+			if(this.props.useTimeBuffer){
+				this.timeBuffer = new UniformBuffer({
 					dataType: "f32",
 					canCopyDst: true
 				});
 			}
-			else if(props.sizeBufferStyle == "vector"){
-				this.sizeVectorBuffer = new UniformBuffer({
-					dataType: "vec2<f32>",
+			if(this.props.useExecutionCountBuffer){
+				this.executionCountBuffer = new UniformBuffer({
+					dataType: "u32",
 					canCopyDst: true
 				});
 			}
-			else if(props.sizeBufferStyle != "none"){
-				throw new Error("Invalid sizeBufferStyle. Must be 'floats', 'vector', or 'none'.");
-			}
-		}
 
-		{ // Built-in binding setup.
-			let bindingW = undefined;
-			let bindGroupsW = undefined;
-			let bindingH = undefined;
-			let bindGroupsH = undefined;
+			if(this.timeBuffer || this.executionCountBuffer){
+				let bindings = [];
 
-			if(!this.props.bindingLayouts.length || this.props.bindingLayouts[0]["binding"]){
-				bindingW = this.widthBuffer;
-				bindingH = this.heightBuffer;
-			}
-			else{
-				let groups = this.props.bindingLayouts[0]["bindGroups"];
-				bindGroupsW = {};
-				bindGroupsH = {};
-				Object.keys(groups).forEach((key) => {
-					bindGroupsW[key] = this.widthBuffer;
-					bindGroupsH[key] = this.heightBuffer;
-				});
-			}
-
-			if(this.props.sizeBufferStyle == "floats"){
-
-				this.props.bindingLayouts.unshift(
-					{
-						binding: bindingW,
-						// bindGroups: bindGroupsW,
-						name: this.props.canvasWidthName,
+				if(this.timeBuffer){
+					bindings.push({
 						type: "uniform",
-					},
-					{
-						binding: bindingH,
-						// bindGroups: bindGroupsH,
-						name: this.props.canvasHeightName,
+						name: this.props.timeBufferName,
+						binding: this.timeBuffer
+					});
+				}
+				if(this.executionCountBuffer){
+					bindings.push({
 						type: "uniform",
-					}
-				);
-			}
-			else if(this.props.sizeBufferStyle == "vector"){
-				this.props.bindingLayouts.unshift({
-					binding: this.sizeVectorBuffer,
-					name: this.props.canvasSizeName,
-					type: "uniform",
+						name: this.props.executionCountBufferName,
+						binding: this.executionCountBuffer
+					});
+				}
+
+				if(props.sizeBufferStyle == "floats"){
+					this.widthBuffer = new UniformBuffer({
+						dataType: "f32",
+						canCopyDst: true
+					});
+					this.heightBuffer = new UniformBuffer({
+						dataType: "f32",
+						canCopyDst: true
+					});
+					bindings.push({
+						type: "uniform",
+						name: this.props["canvasWidthName"] || "canvas_width",
+						binding: this.widthBuffer
+					});
+					bindings.push({
+						type: "uniform",
+						name: this.props["canvasHeightName"] || "canvas_height",
+						binding: this.heightBuffer
+					});
+				}
+				else if(props.sizeBufferStyle == "vector"){
+					this.sizeVectorBuffer = new UniformBuffer({
+						dataType: "vec2<f32>",
+						canCopyDst: true
+					});
+					bindings.push({
+						type: "uniform",
+						name: this.props["canvasSizeName"] || "canvas_size",
+						binding: this.sizeVectorBuffer
+					});
+				}
+				else if(props.sizeBufferStyle != "none"){
+					throw new Error("Invalid sizeBufferStyle. Must be 'floats', 'vector', or 'none'.");
+				}
+
+				this.props.bindingLayouts.push({
+					default: bindings
 				});
 			}
 		}
@@ -157,12 +162,12 @@ export default class RenderShader2d extends Shader{
 		super._setupShader(GPUShaderStage.FRAGMENT);
 	}
 
-	_configurePipeline(extraCode: string, layout: GPUBindGroupLayout): void {
+	_configurePipeline(fragmentCode: string, layouts: GPUBindGroupLayout[]): void {
 		
 		{ // Create the pipeline.
-			let fragmentCode = extraCode + (
-				typeof this.props.code === "string" ? this.props.code : this.props.code.join("\n")
-			);
+			// let fragmentCode = extraCode + (
+			// 	typeof this.props.code === "string" ? this.props.code : this.props.code.join("\n")
+			// );
 
 			let vertexShader = Shader.device.createShaderModule({ code: defaultVertexShader });
 			let fragmentShader = Shader.device.createShaderModule({ code: fragmentCode });
@@ -170,7 +175,7 @@ export default class RenderShader2d extends Shader{
 			this.pipeline = Shader.device.createRenderPipeline({
 				// layout: "auto",
 				layout: Shader.device.createPipelineLayout({
-					bindGroupLayouts: [layout],
+					bindGroupLayouts: layouts,
 				}),
 				primitive: {
 					// topology: 'triangle-strip',
@@ -258,23 +263,7 @@ export default class RenderShader2d extends Shader{
 		}
 	}
 
-	_initialize(bindingLayouts): string {
-
-		let extraFragmentCode = "";
-
-		let fragmentBindingCount = 0;
-		if (bindingLayouts) {
-			for (let i = 0; i < bindingLayouts.length; i++) {
-				let bl = bindingLayouts[i];
-				extraFragmentCode += Shader._getBindingCode(this.props.code, fragmentBindingCount++, bl, 1);
-			}
-		}
-		extraFragmentCode += `\r\n`;
-
-		return extraFragmentCode;
-	}
-
-	pass() {
+	pass(bindGroups?: Record<number, string>) {
 
 		{ // Update built-in buffers
 			if(this.widthBuffer) this.widthBuffer.write(new Float32Array([this.props.canvas.width]));
@@ -315,7 +304,16 @@ export default class RenderShader2d extends Shader{
 
 		passEncoder.setVertexBuffer(0, this.vertexBuffer);
 
-		passEncoder.setBindGroup(0, this._bindGroups[this._lastBindGroup]);
+		for(let i = 0; i < this._bindGroupsByLayout.length; i++){
+			let bl = this._bindGroupsByLayout[i];
+			let groupToSet: GPUBindGroup = bl[bindGroups?.[i] ? bindGroups?.[i] : Object.keys(bl)[0]];
+
+			if(!groupToSet){
+				console.warn(`Bind group ${bindGroups?.[i] ? bindGroups?.[i] : Object.keys(bl)[0]} not found for layout ${i}.`);
+				continue;
+			}
+			passEncoder.setBindGroup(i, groupToSet);
+		}
 
 		passEncoder.draw(6);
 		passEncoder.end();

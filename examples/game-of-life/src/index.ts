@@ -26,6 +26,8 @@ export default class Pipeline {
 
 	dataBuffers: StorageBuffer[];
 
+	private swapState = 0;
+
 	constructor() { 
 		window.addEventListener('resize', () => {
 			if(canvas){
@@ -71,45 +73,59 @@ export default class Pipeline {
 				}),
 			];
 
+			// Configure the compute shader with two groups so we can do buffer swapping.
 			this.golComputeShader = new ComputeShader({
 				code: dftWgsl,
 				workgroupCount: [64, 64],
-				bindingLayouts: [
-					{
-						binding: this.dataBuffers[0],
-						// Coming soon:
-						// bindGroups: {
-						// 	a0: this.audioBuffers[0],
-						// 	a1: this.audioBuffers[1],
-						// 	a2: this.audioBuffers[2]
-						// },
-						name: "currentState",
-						type: "storage"
-					},
-					{
-						binding: this.dataBuffers[1],
-						name: "nextState",
-						type: "storage"
-					},
-				]
+				bindingLayouts: [{
+					group1: [
+						{
+							binding: this.dataBuffers[0],
+							name: "currentState",
+							type: "storage"
+						},
+						{
+							binding: this.dataBuffers[1],
+							name: "nextState",
+							type: "storage"
+						},
+					],
+					group2: [
+						{
+							binding: this.dataBuffers[1],
+							name: "currentState",
+							type: "storage"
+						},
+						{
+							binding: this.dataBuffers[0],
+							name: "nextState",
+							type: "storage"
+						},
+					]
+				}]
 			});
 
+			// The render shader uses the same buffers as the compute shader, but in reverse order.
+			// We use buffer swapping to make the render shader show the latest data.
 			this.renderShader = new RenderShader2d({
 				canvas: canvas,
 				code: renderWgsl,
-				bindingLayouts: [
-					{
-						type: "read-only-storage",
-						name: "data",
-						binding: this.dataBuffers[0],
-						// Coming soon:
-						// bindGroups: {
-						// 	a0: this.audioBuffers[0],
-						// 	a1: this.audioBuffers[1],
-						// 	a2: this.audioBuffers[2]
-						// },
-					},
-				],
+				bindingLayouts: [{
+					group1: [
+						{
+							type: "read-only-storage",
+							name: "data",
+							binding: this.dataBuffers[1],
+						},
+					],
+					group2: [
+						{
+							type: "read-only-storage",
+							name: "data",
+							binding: this.dataBuffers[0],
+						},
+					]
+				}],
 			});
 
 		}
@@ -119,12 +135,18 @@ export default class Pipeline {
 	}
 
 	runPipeline() {
-		// Compute the game of life.
-		this.golComputeShader.dispatch();
-		this.golComputeShader.dispatch();
+		// Compute the game of life with swapping.
+		this.golComputeShader.dispatch({
+			0: this.swapState == 0 ? "group1" : "group2",
+		});
 
 		// Render.
-		this.renderShader.pass();
+		this.renderShader.pass({
+			0: this.swapState == 0 ? "group1" : "group2",
+		});
+
+		// Swap the state for the next frame.
+		this.swapState = 1 - this.swapState;
 
 		requestAnimationFrame(() => this.runPipeline());
 	}

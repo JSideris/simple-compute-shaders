@@ -101,17 +101,6 @@ export default class Pipeline {
 					size: 2048,
 					canCopyDst: true
 				}),
-				// Coming soon: buffer swapping.
-				// new StorageBuffer({
-				// 	dataType: "array<f32>",
-				// 	size: 2048,
-				// 	canCopyDst: true
-				// }),
-				// new StorageBuffer({
-				// 	dataType: "array<f32>",
-				// 	size: 2048,
-				// 	canCopyDst: true
-				// })
 			];
 
 
@@ -123,57 +112,49 @@ export default class Pipeline {
 			this.dftComputeShader = new ComputeShader({
 				code: dftWgsl,
 				workgroupCount: [8, 1],
-				bindingLayouts: [
-					{
-						binding: this.audioBuffers[0],
-						// Coming soon:
-						// bindGroups: {
-						// 	a0: this.audioBuffers[0],
-						// 	a1: this.audioBuffers[1],
-						// 	a2: this.audioBuffers[2]
-						// },
-						name: "inputData",
-						type: "read-only-storage"
-					},
-					{
-						binding: this.dftBuffer,
-						name: "outputData",
-						type: "storage"
-					},
-				]
+				bindingLayouts: [{
+					default: [
+						{
+							binding: this.audioBuffers[0],
+							name: "inputData",
+							type: "read-only-storage"
+						},
+						{
+							binding: this.dftBuffer,
+							name: "outputData",
+							type: "storage"
+						},
+					]
+				}]
 			});
 
 			this.dftRenderShader = new RenderShader2d({
 				canvas: canvas,
 				code: renderWgsl,
-				bindingLayouts: [
-					{
-						type: "read-only-storage",
-						name: "audio",
-						binding: this.audioBuffers[0],
-						// Coming soon:
-						// bindGroups: {
-						// 	a0: this.audioBuffers[0],
-						// 	a1: this.audioBuffers[1],
-						// 	a2: this.audioBuffers[2]
-						// },
-					},
-					{
-						type: "read-only-storage",
-						name: "dftData",
-						binding: this.dftBuffer
-					},
-					{
-						type: "uniform",
-						name: "startOffset",
-						binding: this.startOffsetBuffer
-					},
-					{
-						type: "uniform",
-						name: "endOffset",
-						binding: this.endOffsetBuffer
-					},
-				],
+				bindingLayouts: [{
+					default: [
+						{
+							type: "read-only-storage",
+							name: "audio",
+							binding: this.audioBuffers[0],
+						},
+						{
+							type: "read-only-storage",
+							name: "dftData",
+							binding: this.dftBuffer
+						},
+						{
+							type: "uniform",
+							name: "startOffset",
+							binding: this.startOffsetBuffer
+						},
+						{
+							type: "uniform",
+							name: "endOffset",
+							binding: this.endOffsetBuffer
+						},
+					]
+				}]
 			});
 
 		}

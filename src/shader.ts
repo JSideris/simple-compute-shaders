@@ -1,53 +1,14 @@
 import { ShaderBuffer, UniformBuffer } from "./shader-buffer";
+import type { BaseShaderProps, BindingDef } from "./shader-types";
 import { isValidWebGpuVarName } from "./util";
 
 var shaderInitialized = false;
-
-
-
-type BindingLayoutDef = {
-	type: "storage" | "read-only-storage" | "uniform" | "write-only-texture" | "var";
-	name: string;
-	// visibility: number;
-} & (
-	{
-		binding: ShaderBuffer
-	} 
-	| {
-		bindGroups: Record<string, ShaderBuffer>
-	}
-)
-
-export type BaseShaderProps = {
-	code: string|Array<string>;
-	bindingLayouts?: Array<BindingLayoutDef>;
-	/**
-	 * @default "execution_counter"
-	 */
-	executionCountBufferName?: string;
-	/**
-	 * @default true
-	 */
-	useExecutionCountBuffer?: boolean;
-
-	/**
-	 * @default "time"
-	 */
-	timeBufferName?: string;
-	/**
-	 * @default true
-	 */
-	useTimeBuffer?: boolean;
-}
-
-
-
 
 export abstract class Shader {
 	static device: GPUDevice;
 	static presentationFormat: GPUTextureFormat;
 	static adapter: GPUAdapter;
-	allBindingGroupNames: any[];
+	// allBindingGroupNames: any[];
 
 	executionCountBuffer: UniformBuffer;
 	timeBuffer: UniformBuffer;
@@ -80,48 +41,7 @@ export abstract class Shader {
 		return Shader.device;
 	}
 
-	static _getBindingCode(code: string | string[], numb: number, bl: BindingLayoutDef, group: number = 0) {
-		let codeStr = typeof code === "string" ? code : code.join("\n");
-	
-		// Parse binding mappings from the obfuscated shader code
-		const bindingMap: { [originalName: string]: string } = {};
-		const lines = codeStr.split("\n");
-		for (const line of lines) {
-			const trimmedLine = line.trim();
-			if (trimmedLine.startsWith("//#!binding")) {
-				const parts = trimmedLine.split(" ");
-				if (parts.length >= 3) {
-					const originalName = parts[1];
-					const obfuscatedName = parts[2];
-					bindingMap[originalName] = obfuscatedName;
-				}
-			}
-		}
-	
-		// Determine the name to inject: obfuscated if available, original otherwise
-		const originalName = bl.name;
-		const nameToUse = bindingMap[originalName] || originalName;
-	
-		// Extract the data type (unchanged from your original code)
-		let dataType: string;
-		if (bl["binding"]) {
-			dataType = bl["binding"].dataType;
-		} else {
-			dataType = bl["bindGroups"][Object.keys(bl["bindGroups"])[group]]?.dataType;
-		}
-	
-		if (!dataType) {
-			console.warn(`No data type found for binding ${originalName}.`);
-			return "";
-		}
-	
-		// Build the binding string with the correct name
-		let newBinding = `@binding(${numb}) @group(${0}) ${bl.type == "var" ? "var" : `var<${bl.type == "read-only-storage" ? "storage, read" : bl.type == "storage" ? "storage, read_write" : bl.type == "write-only-texture" ? "storage, read_write" : "uniform"}>`} ${nameToUse}: ${dataType};\r\n`;
-	
-		return newBinding;
-	}
-
-	_bindGroups: Record<string, GPUBindGroup> = {};
+	_bindGroupsByLayout: Record<string, GPUBindGroup>[] = [];
 	_lastBindGroup: string;
 	pipeline: GPUComputePipeline | GPURenderPipeline;
 	props: BaseShaderProps;
@@ -135,74 +55,43 @@ export abstract class Shader {
 			if(this.props.useTimeBuffer !== false) this.props.useTimeBuffer = true;
 			if(this.props.useExecutionCountBuffer && !this.props.executionCountBufferName) this.props.executionCountBufferName = "execution_count";
 			if(this.props.useTimeBuffer && !this.props.timeBufferName) this.props.timeBufferName = "time";
-
-			if(!this.props.bindingLayouts){
-				this.props.bindingLayouts = [];
-			}
+			if(!this.props.bindingLayouts) this.props.bindingLayouts = [];
 		}
 		
-		this.allBindingGroupNames = [];
+		// this.allBindingGroupNames = [];
 		{ // Validation
 			// Ensure the shader class has been initialized.
 			if (!Shader.isInitialized) throw new Error("Call Shader.initialize() before instantiating a shader pipeline.");
 		
-			let isMultiMode = false;
+			// let isMultiMode = false;
 			let groupNamesSet = new Set<string>();
 		
-			if (props.bindingLayouts?.length) {
-				// First pass: Determine if any layout is multi-mode and collect group names
+			if (this.props.bindingLayouts?.length) {
+				// Ensure that all binding layouts have compatible bindings.
 				for (let i = 0; i < props.bindingLayouts.length; i++) {
 					let bl = props.bindingLayouts[i];
-					if (bl["bindGroups"]) {
-						isMultiMode = true;
-						let currentBindingNames = Object.keys(bl["bindGroups"]);
-						currentBindingNames.forEach(name => groupNamesSet.add(name));
-					}
-				}
-		
-				if (isMultiMode) {
-					// We are in multi-mode
-					this.allBindingGroupNames = Array.from(groupNamesSet);
-					// Ensure that "default" is not included
-					let defaultIndex = this.allBindingGroupNames.indexOf("default");
-					if (defaultIndex >= 0) {
-						this.allBindingGroupNames.splice(defaultIndex, 1);
-					}
-				} else {
-					// We are in single-mode
-					this.allBindingGroupNames = ["default"];
-				}
-		
-				// Second pass: Validation
-				for (let i = 0; i < props.bindingLayouts.length; i++) {
-					let bl = props.bindingLayouts[i];
-					if (bl["bindGroups"]) {
-						// Multi-mode binding layout
-						let currentBindingNames = Object.keys(bl["bindGroups"]);
-		
-						// Check that currentBindingNames match this.allBindingGroupNames
-						for (let name of currentBindingNames) {
-							if (!this.allBindingGroupNames.includes(name)) {
-								throw new Error("All binding groups must have the same names.");
+
+					// Make sure that each bind group within this layout has compatible bindings.
+					let firstGroup = Object.keys(bl)[0];
+					for (let group of Object.keys(bl)) {
+						for (let b = 0; b < bl[group].length; b++) {
+							let binding = bl[group][b];
+							if (binding.type != bl[firstGroup][b].type) {
+								throw new Error(`Binding type mismatch in group ${group}: expected '${bl[firstGroup][b].type}', got '${binding.type}'`);
+							}
+
+							if (binding.name != bl[firstGroup][b].name) {
+								throw new Error(`Binding name mismatch in group ${group}: expected '${bl[firstGroup][b].name}', got '${binding.name}'`);
+							}
+
+							if (binding.binding.baseType != bl[firstGroup][b].binding.baseType) {
+								throw new Error(`Binding baseType mismatch in group ${group}: expected '${bl[firstGroup][b].binding.baseType}', got '${binding.binding.baseType}'`);
+							}
+
+							if (binding.binding.dataType != bl[firstGroup][b].binding.dataType) {
+								throw new Error(`Binding dataType mismatch in group ${group}: expected '${bl[firstGroup][b].binding.dataType}', got '${binding.binding.dataType}'`);
 							}
 						}
-		
-						if (currentBindingNames.length != this.allBindingGroupNames.length) {
-							throw new Error("All binding groups must have the same number of bindings.");
-						}
-		
-						// Ensure that each binding within the group has the same `dataType`.
-						let type = bl["bindGroups"][currentBindingNames[0]]?.dataType;
-						for (let j = 0; j < currentBindingNames.length; j++) {
-							if (bl["bindGroups"][currentBindingNames[j]]?.dataType != type) {
-								throw new Error("All bindings within a group must have the same `dataType`.");
-							}
-						}
-					} else if (bl["binding"]) {
-						// Single-mode binding layout
-						// No additional validation needed in this context
-					} else {
-						throw new Error("Binding layout must have either 'binding' or 'bindGroups'.");
 					}
 				}
 			}
@@ -214,138 +103,133 @@ export abstract class Shader {
 				throw new Error("Invalid timeBufferName. Must be a valid WGSL variable name.");
 			}
 		}
-	
-		{ // Default buffers.
-			if(props.useTimeBuffer){
-				this.timeBuffer = new UniformBuffer({
-					dataType: "f32",
-					canCopyDst: true
-				});
-			}
-			if(props.useExecutionCountBuffer){
-				this.executionCountBuffer = new UniformBuffer({
-					dataType: "u32",
-					canCopyDst: true
-				});
-			}
-		}
-
-		{ // Built-in binding setup.
-			let bindingT = undefined;
-			let bindGroupsT = undefined;
-			let bindingEx = undefined;
-			let bindGroupsEx = undefined;
-
-			if(!this.props.bindingLayouts.length || this.props.bindingLayouts[0]["binding"]){
-				bindingT = this.timeBuffer;
-				bindingEx = this.executionCountBuffer;
-			}
-			else{
-				let groups = this.props.bindingLayouts[0]["bindGroups"];
-				bindGroupsT = {};
-				bindGroupsEx = {};
-				Object.keys(groups).forEach((key) => {
-					bindGroupsT[key] = this.timeBuffer;
-					bindGroupsEx[key] = this.executionCountBuffer;
-				});
-			}
-
-			if(this.props.useTimeBuffer){
-				this.props.bindingLayouts.unshift({
-					binding: this.timeBuffer,
-					name: this.props.timeBufferName,
-					type: "uniform",
-				});
-			}
-			if(this.props.useExecutionCountBuffer){
-				this.props.bindingLayouts.unshift({
-					binding: this.executionCountBuffer,
-					name: this.props.executionCountBufferName,
-					type: "uniform",
-				});
-			}
-		}
 	}
 
 	_setupShader(bindingVisibility: number) {
-		let extraCode = "";
+		let code = "";
 
-		{ // 1. Initialization
+		{ // 1. Shader Code Construction
 
 			// We can configure stuff in the shader automatically.
 
-			extraCode += this._initialize(this.props.bindingLayouts);
+			// This adds all the binding stuff to the shader code.
+			let extraCode = this._initialize();
+			code = extraCode + (
+				typeof this.props.code === "string" ? this.props.code : this.props.code.join("\n")
+			);
 		}
 
-		let layout: GPUBindGroupLayout;
-		{ // 2. Bindings
-			layout = //props.bindGroupLayout ?? 
-				Shader.device.createBindGroupLayout({
-				entries: this.props.bindingLayouts.map((b, i) => {
-					return {
-						binding: i,
-						visibility: bindingVisibility,
-						buffer: b.type == "write-only-texture" ? undefined : {
-							type: b.type
-						},
-						// storageTexture: b.type == "write-only-texture" ? {
-						// 	access: "write-only",
-						// 	format: "rgba8unorm",
-						// 	viewDimension: "2d"
-						// } : undefined,
-						texture: b.type == "write-only-texture" ? {
-							sampleType: "float",
-							viewDimension: "2d"
-						} : undefined
-					} as GPUBindGroupLayoutEntry;
-				})
-			});
+		let layouts: GPUBindGroupLayout[] = [];
+		{ // 2. Binding Layouts
+			for(let i = 0; i < this.props.bindingLayouts.length; i++){
+				this._bindGroupsByLayout.push({});
+
+				let bg = this.props.bindingLayouts[i][Object.keys(this.props.bindingLayouts[i])[0]];
+				let layout = Shader.device.createBindGroupLayout({
+					entries: bg.map((b, bi) => {
+						return {
+							binding: bi,
+							visibility: bindingVisibility,
+							buffer: b.type == "write-only-texture" ? undefined : {
+								type: b.type
+							},
+							texture: b.type == "write-only-texture" ? {
+								sampleType: "float",
+								viewDimension: "2d"
+							} : undefined
+						} as GPUBindGroupLayoutEntry;
+					})
+				});
+
+				layouts.push(layout);
+			}
 		}
 
 		{ // 3. Pipeline Configuration
-			this._configurePipeline(extraCode, layout);
+			this._configurePipeline(code, layouts);
 		}
 
 		{ // 4. Bind groups.
 
-			this._lastBindGroup = this.allBindingGroupNames[0];
+			for(let i = 0; i < this.props.bindingLayouts.length; i++){
+				let bl = this.props.bindingLayouts[i];
+				let groupNames = Object.keys(bl);
+				for(let j = 0; j < groupNames.length; j++){
+					let name = groupNames[j];
+					let spec = bl[name];
 
-			// console.log(allBindingGroupNames);
-			Object.keys(this.allBindingGroupNames).forEach((key, i) => {
-				let name = this.allBindingGroupNames[key];
-				let spec = [];
+					let bindGroup = Shader.device.createBindGroup({
+						layout: layouts[i],
+						entries: spec.map((s, bi) => {
+							return {
+								binding: bi,
+								resource: { buffer: s.binding.buffer, label: name }
+							} as GPUBindGroupEntry;
+						})
+					});
 
-				// Fill up the spec based on the binding layouts.
-				for(let j = 0; j < this.props.bindingLayouts.length; j++){
-					let bl = this.props.bindingLayouts[j];
-					if(bl["binding"]){
-						spec.push(bl["binding"]);
-					}
-					else if(bl["bindings"]){
-						spec.push(bl["bindings"][name]);
-					}
+					this._bindGroupsByLayout[i][name] = bindGroup;
 				}
-
-				let bindGroup = Shader.device.createBindGroup({
-					// TODO: should this always be hardcoded to 0?
-					layout: this.pipeline.getBindGroupLayout(0),
-					//layout,
-					entries: spec.map((s, i) => {
-						return {
-							binding: i,
-							resource: s instanceof GPUBuffer ? { buffer: s, label: key } : s
-						};
-					})
-				});
-
-				// console.log(key);
-				this._bindGroups[name] = bindGroup;
-			});
+			}
 		}
 	}
 
-	abstract _configurePipeline(extraCode: string, layout: GPUBindGroupLayout): void;
-	abstract _initialize(bindingLayouts: Array<BindingLayoutDef>): string;
+	private _initialize(): string{
+		let extraCode = "";
+
+		let codeStr = typeof this.props.code === "string" ? this.props.code : this.props.code.join("\n");
+	
+		// Parse binding mappings from the obfuscated shader code
+		let bindingMap: { [originalName: string]: string } = {};
+		{
+			let lines = codeStr.split("\n");
+			for (let line of lines) {
+				let trimmedLine = line.trim();
+				if (trimmedLine.startsWith("//#!binding")) {
+					let parts = trimmedLine.split(" ");
+					if (parts.length >= 3) {
+						let originalName = parts[1];
+						let obfuscatedName = parts[2];
+						bindingMap[originalName] = obfuscatedName;
+					}
+				}
+			}
+		}
+
+		if (this.props.bindingLayouts) {
+			for (let bl = 0; bl < this.props.bindingLayouts.length; bl++) {
+				// Just get the first group. All groups should be the same (aside from specific buffers/uniforms).
+				let bg = this.props.bindingLayouts[bl][Object.keys(this.props.bindingLayouts[bl])[0]];
+				if(bg){
+					for(let b = 0; b < bg.length; b++){
+
+						// Determine the name to inject: obfuscated if available, original otherwise
+						let originalName = bg[b].name;
+						let nameToUse = bindingMap[originalName] || originalName;
+
+						// Extract the data type (unchanged from your original code)
+						let dataType: string = bg[b].binding?.dataType;
+					
+						if (!dataType) {
+							console.warn(`No data type found for binding ${originalName}.`);
+							continue;
+						}
+
+						let type = bg[b].type;
+						let newBinding = `@group(${bl}) @binding(${b}) ${type == "var" ? "var" : `var<${type == "read-only-storage" ? "storage, read" : type == "storage" ? "storage, read_write" : type == "write-only-texture" ? "storage, read_write" : "uniform"}>`} ${nameToUse}: ${dataType};\r\n`;
+
+						extraCode += newBinding;
+						
+					}
+				}
+			}
+		}
+		extraCode += `\r\n`;
+
+		return extraCode;
+	}
+
+	abstract _configurePipeline(extraCode: string, layouts: GPUBindGroupLayout[]): void;
 
 	dispose(){};
 }

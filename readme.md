@@ -44,7 +44,7 @@ This library simplifies a great deal of the plumbing needed to do rapid prototyp
 - Buffer swapping and groups are not supported yet, but are coming soon.
 - It currently isn't possible to use blend modes for render shaders. But this will be added soon.
 - No vertex shaders or vertex buffers. A significant part of the complexity of GPU programming is dealing with vertex data. This library is for users who want to build compute shaders or do 2D rendering on a quad.
-- Only one shader entry point is supported.
+- Only one shader entry point is supported and it must be called `main`. If you need multiple entry points, build multiple shader pipelines.
 - GPUBufferUsage.MAP_WRITE and GPUBufferUsage.MAP_READ are currently unsupported.
 
 ## Requirements
@@ -168,7 +168,7 @@ Constructs a pipeline for a compute shader. The `ComputeShaderProps` type is use
 
 - **`workgroupCount`**: `[number, number, number]` or `[number, number]`. Specifies the number of workgroups to be dispatched. This can be a 2D or 3D array, depending on the desired compute workload.
 
-- **`bindingLayouts`** (optional): `Array<BindingLayoutDef>`. An array defining the binding layouts used by the compute shader. This includes information such as the type of resource (`storage`, `uniform`, etc.), the data type (e.g., `u32`, `f32`), and the binding group configuration.
+- **`bindingLayouts`**: `Array<BindingLayoutDef>`. An array of binding layouts used by the compute shader. Each layout contains a collection of groups, and each group is an array of binding definitions.
 
 - **`useExecutionCountBuffer`** (optional): `boolean`. Adds a uniform to the shader that counts the number of times the shader has been dispatched. Default value is `true`.
 
@@ -222,13 +222,15 @@ this.sortComputeShader = new ComputeShader({
         }
     `,
     workgroupCount: [32, 1],
-    bindingLayouts: [
-        {
-            binding: this.dataBuffer,
-            name: "data",
-            type: "storage"
-        }
-    ]
+    bindingLayouts: [{
+        default: [
+            {
+                binding: this.dataBuffer,
+                name: "data",
+                type: "storage"
+            }
+        ]
+    }]
 });
 
 // Create a random array of floats.
@@ -266,7 +268,7 @@ Constructs a new pipeline for a render shader, containing a built-in vertex stag
 
 - **`code`**: `string|Array<string>`. The WGSL code for the fragment shader. This code should contain the `@fragment` entry point named `main`. Bindings are injected automatically by the library. Set `code` to an array of strings to modularize your code.
 
-- **`bindingLayouts`** (optional): `Array<BindingLayoutDef>`. An array defining the binding layouts used by the render shader. This includes information such as the type of resource (`uniform`, `storage`, etc.), the data type (e.g., `f32`, `vec4<f32>`), and the binding group configuration.
+- **`bindingLayouts`**: `Array<BindingLayoutDef>`. An array of binding layouts used by the compute shader. Each layout contains a collection of groups, and each group is an array of binding definitions.
 
 - **`canvas`**: `HTMLCanvasElement`. The HTML canvas element that will be used as the rendering target. This canvas is required for rendering the output of the fragment shader to the screen.
 
@@ -306,13 +308,15 @@ const renderShader = new RenderShader2d({
             return color; // value of the color uniform.
         }
     `,
-    bindingLayouts: [
-        {
-            type: "uniform", 
-            name: "color", 
-            binding: myUniformBuffer 
-        }
-    ],
+    bindingLayouts: [{
+        default: [
+            {
+                type: "uniform", 
+                name: "color", 
+                binding: myUniformBuffer 
+            }
+        ]
+    }],
     canvas: document.getElementById('myCanvas') as HTMLCanvasElement
 });
 
@@ -353,7 +357,15 @@ Each binding layout definition in your `bindingLayouts` field must satisfy the `
 
 - **binding** (required if bindGroups is not provided, otherwise must be omitted): `ShaderBuffer`. The GPU buffer to be added to the default bind group. If one buffer is using `binding`, they all must.
 
-- **bindGroups** (CURRENTLY NOT SUPPORTED - required if binding is not provided, otherwise must be omitted): `Record<string, ShaderBuffer>`. A collection of `GPUBuffer` objects with strings representing bind group names. This is useful for setting up buffer swapping for things like double-buffering. If one buffer is using `bindGroups`, they all must, and they all must have the same bind group names.
+- **bindLayouts**: `Record<string, BindingDef[]>[]`. An array of binding layouts. A binding layout is defined as a key-value pair of strings to binding groups, where binding groups are simply an array of BindingDef objects.
+
+### BindingDef
+
+A BindingDef links a buffer to a specific binding within a bind group. Fields include:
+
+- **type**: `"storage" | "read-only-storage" | "uniform" | "write-only-texture" | "var"`. The type of binding (not to be confused with the datatype of the buffer);
+- **name**: `string`. The name of the binding. This name will be generated in the shader code.
+- **binding**: `ShaderBuffer`. The ShaderBuffer object. Simple Compute Shaders allows you to set this directly in your bindings.
 
 ## Shader Code Integration
 

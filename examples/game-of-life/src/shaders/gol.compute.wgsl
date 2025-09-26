@@ -19,13 +19,6 @@ fn main(@builtin(global_invocation_id) globalID : vec3<u32>) {
 
     let cellValue = currentState[arrayIndex];
 
-    // On even frames, we progress the simulation.
-    // But on odd frames, we copy the next state to the current state.
-    if(execution_count % 2 == 1u){
-        currentState[arrayIndex] = nextState[arrayIndex];
-        return;
-    }
-
     // Calculate neighbor coordinates with wrapping
     let x_left  = (x + 1023u) % 1024u;
     let x_right = (x + 1u) % 1024u;

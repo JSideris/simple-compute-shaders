@@ -1,4 +1,6 @@
-import { BaseShaderProps, Shader } from "./shader";
+import { Shader } from "./shader";
+import { UniformBuffer } from "./shader-buffer";
+import type { BaseShaderProps, BindingGroupDef } from "./shader-types";
 
 type ComputeShaderProps = BaseShaderProps & {
 	workgroupCount: [number, number, number] | [number, number];
@@ -13,10 +15,48 @@ export default class ComputeShader extends Shader{
 		super(props);
 		this.props = props;
 
+		{ // Internal binding layout.
+			if(this.props.useTimeBuffer){
+				this.timeBuffer = new UniformBuffer({
+					dataType: "f32",
+					canCopyDst: true
+				});
+			}
+			if(this.props.useExecutionCountBuffer){
+				this.executionCountBuffer = new UniformBuffer({
+					dataType: "u32",
+					canCopyDst: true
+				});
+			}
+
+			if(this.timeBuffer || this.executionCountBuffer){
+				let bindings = [];
+
+				if(this.timeBuffer){
+					bindings.push({
+						type: "uniform",
+						name: this.props.timeBufferName,
+						binding: this.timeBuffer
+					});
+				}
+				if(this.executionCountBuffer){
+					bindings.push({
+						type: "uniform",
+						name: this.props.executionCountBufferName,
+						binding: this.executionCountBuffer
+					});
+				}
+
+				this.props.bindingLayouts.push({
+					default: bindings
+				});
+			}
+		}
+
 		super._setupShader(GPUShaderStage.COMPUTE);
 	}
 
-	dispatch() {
+	dispatch(bindGroups?: Record<number, string>) {
 
 		{ // Update built-in buffers
 			if(this.props.useExecutionCountBuffer) this.executionCountBuffer.write(new Uint32Array([this.executionCount++]));
@@ -37,7 +77,18 @@ export default class ComputeShader extends Shader{
 		let passEncoder = commandEncoder.beginComputePass();
 
 		passEncoder.setPipeline(this.pipeline as GPUComputePipeline);
-		passEncoder.setBindGroup(0, this._bindGroups[this._lastBindGroup]);
+		
+		for(let i = 0; i < this._bindGroupsByLayout.length; i++){
+			let bl = this._bindGroupsByLayout[i];
+			let groupToSet: GPUBindGroup = bl[bindGroups?.[i] ? bindGroups?.[i] : Object.keys(bl)[0]];
+
+			if(!groupToSet){
+				console.warn(`Bind group ${bindGroups?.[i] ? bindGroups?.[i] : Object.keys(bl)[0]} not found for layout ${i}.`);
+				continue;
+			}
+			passEncoder.setBindGroup(i, groupToSet);
+		}
+
 		passEncoder.dispatchWorkgroups(
 			this.props.workgroupCount[0], this.props.workgroupCount[1], this.props.workgroupCount[2]
 		);
@@ -46,35 +97,17 @@ export default class ComputeShader extends Shader{
 		Shader.device.queue.submit([commandEncoder.finish()]);
 	}
 
-	_configurePipeline(extraCode: string, layout: GPUBindGroupLayout): void {
-		let code = extraCode + (
-			typeof this.props.code === "string" ? this.props.code : this.props.code.join("\n")
-		);
+	_configurePipeline(code: string, layouts: GPUBindGroupLayout[]): void {
 		let shaderModule = Shader.device.createShaderModule({ code: code });
 
 		this.pipeline = Shader.device.createComputePipeline({
 			layout: Shader.device.createPipelineLayout({
-				bindGroupLayouts: [layout],
+				bindGroupLayouts: layouts,
 			}),
 			compute: {
 				module: shaderModule,
 				entryPoint: "main",
 			},
 		});
-	}
-
-	_initialize(bindingLayouts): string{
-		let extraComputeCode = "";
-
-		let computeBindingCount = 0;
-		if (bindingLayouts) {
-			for (let i = 0; i < bindingLayouts.length; i++) {
-				let bl = bindingLayouts[i];
-				extraComputeCode += Shader._getBindingCode(this.props.code, computeBindingCount++, bl);
-			}
-		}
-		extraComputeCode += `\r\n`;
-
-		return extraComputeCode;
 	}
 }

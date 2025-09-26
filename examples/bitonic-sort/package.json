@@ -19,6 +19,6 @@
   },
   "dependencies": {
     "@webgpu/types": "^0.1.51",
-    "simple-compute-shaders": "^0.1.7"
+    "simple-compute-shaders": "^0.2.0"
   }
 }
