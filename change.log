@@ -1,3 +1,8 @@
+2025-09-25 v0.2.0
+- Added support for binding layouts.
+- Added mechanism for buffer swapping.
+- Changed binding layout/group/binding interface, which may break older code.
+
 2025-03-02 v0.1.12
 
 - Added support for obfuscated binding mappings from the wgsl-plus utility.
