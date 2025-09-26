@@ -1,3 +1,6 @@
+2025-09-26 v0.2.1
+- Added support for complex struct data buffers.
+
 2025-09-25 v0.2.0
 - Added support for binding layouts.
 - Added mechanism for buffer swapping.
