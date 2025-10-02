@@ -11,3 +11,7 @@ export function isValidWebGpuVarName(name: string): boolean {
 	}
 	return !wgslReservedKeywords.has(name);
 }
+
+export function getCurrentTime(): number {
+	return performance ? (performance.now() / 1000) : (Date.now() / 1000);
+}

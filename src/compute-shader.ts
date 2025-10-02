@@ -56,7 +56,9 @@ export default class ComputeShader extends Shader{
 		super._setupShader(GPUShaderStage.COMPUTE);
 	}
 
-	dispatch(bindGroups?: Record<number, string>) {
+	dispatch(props?: {
+		bindGroups?: Record<number, string>
+	}) {
 
 		{ // Update built-in buffers
 			if(this.props.useExecutionCountBuffer) this.executionCountBuffer.write(new Uint32Array([this.executionCount++]));
@@ -80,10 +82,10 @@ export default class ComputeShader extends Shader{
 		
 		for(let i = 0; i < this._bindGroupsByLayout.length; i++){
 			let bl = this._bindGroupsByLayout[i];
-			let groupToSet: GPUBindGroup = bl[bindGroups?.[i] ? bindGroups?.[i] : Object.keys(bl)[0]];
+			let groupToSet: GPUBindGroup = bl[props?.bindGroups?.[i] ? props?.bindGroups?.[i] : Object.keys(bl)[0]];
 
 			if(!groupToSet){
-				console.warn(`Bind group ${bindGroups?.[i] ? bindGroups?.[i] : Object.keys(bl)[0]} not found for layout ${i}.`);
+				console.warn(`Bind group ${props?.bindGroups?.[i] ? props?.bindGroups?.[i] : Object.keys(bl)[0]} not found for layout ${i}.`);
 				continue;
 			}
 			passEncoder.setBindGroup(i, groupToSet);

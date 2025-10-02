@@ -1,7 +1,7 @@
 import { Shader } from "./shader";
 import { UniformBuffer } from "./shader-buffer";
 import type { BaseShaderProps } from "./shader-types";
-import { isValidWebGpuVarName } from "./util";
+import { getCurrentTime, isValidWebGpuVarName } from "./util";
 
 const defaultVertexShader = /*WGSL*/`
 struct VertexOutput {
@@ -51,12 +51,27 @@ type RenderShader2dProps = BaseShaderProps & {
 export default class RenderShader2d extends Shader{
 	pipeline: GPURenderPipeline;
 	// private renderPassDescriptor: GPURenderPassDescriptor;
-	private canvasContext: GPUCanvasContext;
 	props: RenderShader2dProps;
 	vertexBuffer: GPUBuffer;
 	widthBuffer: UniformBuffer;
 	heightBuffer: UniformBuffer;
 	sizeVectorBuffer: UniformBuffer;
+
+	
+	private lastHeight: number = -1;
+	private lastWidth: number = -1;
+	private view: GPUTextureView = null;
+	private _canvasContext: GPUCanvasContext;
+	private get canvasContext(){
+		return this._canvasContext;
+	}
+	private set canvasContext(value: GPUCanvasContext){
+		this._canvasContext = value;
+		if(value){
+			this.view = value.getCurrentTexture().createView();
+		}
+	}
+
 
 	constructor(props: RenderShader2dProps){
 		super(props);
@@ -226,6 +241,9 @@ export default class RenderShader2d extends Shader{
 		// this.canvas = props.canvas;
 		{ // Get and configure the canvas context.
 			this.canvasContext = this.props.canvas.getContext('webgpu') as GPUCanvasContext;
+			if(!this.canvasContext){
+				throw new Error("Failed to get a webgpu canvas context.");
+			}
 			this.canvasContext.configure({
 				device: Shader.device,
 				format: Shader.presentationFormat,
@@ -263,17 +281,28 @@ export default class RenderShader2d extends Shader{
 		}
 	}
 
-	pass(bindGroups?: Record<number, string>) {
+	pass(props?:{
+		bindGroups?: Record<number, string>
+	}) {
 
 		{ // Update built-in buffers
-			if(this.widthBuffer) this.widthBuffer.write(new Float32Array([this.props.canvas.width]));
-			if(this.heightBuffer) this.heightBuffer.write(new Float32Array([this.props.canvas.height]));
-			if(this.sizeVectorBuffer) this.sizeVectorBuffer.write(new Float32Array([this.props.canvas.width, this.props.canvas.height]));
+			if(this.widthBuffer && this.props.canvas.width !== this.lastWidth) {
+				this.widthBuffer.write(new Float32Array([this.props.canvas.width]));
+			}
+			if(this.heightBuffer && this.props.canvas.height !== this.lastHeight) {
+				this.heightBuffer.write(new Float32Array([this.props.canvas.height]));
+			}
+			if(this.sizeVectorBuffer && (
+				this.props.canvas.width !== this.lastWidth 
+				|| this.props.canvas.height !== this.lastHeight
+			)) {
+				this.sizeVectorBuffer.write(new Float32Array([this.props.canvas.width, this.props.canvas.height]));
+			}
 			
 			if(this.props.useExecutionCountBuffer) this.executionCountBuffer.write(new Uint32Array([this.executionCount++]));
 			if(this.props.useTimeBuffer) {
 				// Time in seconds:
-				let now = performance ? (performance.now() / 1000) : (Date.now() / 1000);
+				let now = getCurrentTime();
 				if(!this.lastTime) this.lastTime = now;
 				this.time += now - this.lastTime;
 				this.lastTime = now;
@@ -282,21 +311,16 @@ export default class RenderShader2d extends Shader{
 			}
 		}
 
-		// TODO: try not creating the view each frame.
-		let view = this.canvasContext.getCurrentTexture().createView();
-
-		let renderPassDescriptor = {
+		let renderPassDescriptor: GPURenderPassDescriptor = {
 			colorAttachments: [
 				{
-					view: this.canvasContext.getCurrentTexture().createView(),
-					loadOp: "clear" as "clear",
-					storeOp: "store" as "store",
+					view: this.view,
+					loadOp: "clear",
+					storeOp: "store",
 					clearValue: { r: 0, g: 0, b: 0, a: 1 }
 				},
 			],
 		};
-
-		renderPassDescriptor.colorAttachments[0].view = view;
 
 		let commandEncoder = Shader.device.createCommandEncoder();
 		let passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
@@ -306,10 +330,10 @@ export default class RenderShader2d extends Shader{
 
 		for(let i = 0; i < this._bindGroupsByLayout.length; i++){
 			let bl = this._bindGroupsByLayout[i];
-			let groupToSet: GPUBindGroup = bl[bindGroups?.[i] ? bindGroups?.[i] : Object.keys(bl)[0]];
+			let groupToSet: GPUBindGroup = bl[props?.bindGroups?.[i] ? props?.bindGroups?.[i] : Object.keys(bl)[0]];
 
 			if(!groupToSet){
-				console.warn(`Bind group ${bindGroups?.[i] ? bindGroups?.[i] : Object.keys(bl)[0]} not found for layout ${i}.`);
+				console.warn(`Bind group ${props?.bindGroups?.[i] ? props?.bindGroups?.[i] : Object.keys(bl)[0]} not found for layout ${i}.`);
 				continue;
 			}
 			passEncoder.setBindGroup(i, groupToSet);

@@ -1,3 +1,11 @@
+Upcoming v0.3.0
+- Wrapped pass and dispatch args in an optional props object for future expansion.
+- Added vastly more types in the ShaderBuffer class including matrix variants, atomic types, and more.
+- Fixed internal typing issues with the ShaderBuffer wrapper class.
+- Added better validation on null/undefined buffers being passed to shaders.
+- Optimized render shader to avoid recreating the texture view each frame.
+- Optimized render shader by not writing canvas size buffers unless they need to be.
+
 2025-09-26 v0.2.1
 - Added support for complex struct data buffers.
 

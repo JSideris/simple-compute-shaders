@@ -340,7 +340,7 @@ export abstract class ShaderBuffer {
 	write(value: Float32Array | Uint32Array | Int32Array, offset = 0) {
 		if (!this.props.canCopyDst) throw new Error("Buffer is not writable. Set `canCopyDst` to `true` in the buffer props.");
 		const offsetBytes = offset * this.sizeBytes / this.sizeElements;
-		Shader.device.queue.writeBuffer(this.buffer, offsetBytes, value);
+		Shader.device.queue.writeBuffer(this.buffer, offsetBytes, value as BufferSource);
 	}
 
 	// /**
