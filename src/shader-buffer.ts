@@ -1,11 +1,41 @@
 import { Shader } from "./shader";
 
-type WgslPrimative = `${"u" | "f" | "i"}32`;
+type WgslPrimative = `${"u" | "f" | "i"}32` | "bool";
+type WgslAtomic = `atomic<${"u32"|"i32"}>`;
 type WgslVec = `vec${2 | 3 | 4}<${WgslPrimative}>`;
-type WgslMatrix = `mat4x4<${WgslPrimative}>`;
-type WgslArray = `array<${WgslPrimative | WgslVec | WgslMatrix}>`;
-type WgslTexture = `texture_2d<${WgslPrimative}>`;
-type WgslStruct = `struct`;
+type WgslMatrix = `mat${2 | 3 | 4}x${2 | 3 | 4}<${WgslPrimative}>`;
+type WgslArray = `array<${WgslPrimative | WgslVec | WgslMatrix | WgslAtomic}>`;
+type WgslSampler = "sampler" | "sampler_comparison";
+type WgslStorageFormat = 
+  | "rgba8unorm"      // 8-bit normalized (0.0-1.0)
+  | "rgba8snorm"      // 8-bit signed normalized (-1.0-1.0)
+  | "rgba8uint"       // 8-bit unsigned integer
+  | "rgba8sint"       // 8-bit signed integer
+  | "rgba16uint"      // 16-bit unsigned integer
+  | "rgba16sint"      // 16-bit signed integer
+  | "rgba16float"     // 16-bit float
+  | "rgba32uint"      // 32-bit unsigned integer
+  | "rgba32sint"      // 32-bit signed integer
+  | "rgba32float"     // 32-bit float
+type WgslTexture = 
+  | `texture_1d<${WgslPrimative}>`
+  | `texture_2d<${WgslPrimative}>`
+  | `texture_2d_array<${WgslPrimative}>`
+  | `texture_3d<${WgslPrimative}>`
+  | `texture_cube<${WgslPrimative}>`
+  | `texture_cube_array<${WgslPrimative}>`
+  | `texture_multisampled_2d<${WgslPrimative}>`
+  | "texture_depth_2d"
+  | "texture_depth_2d_array"
+  | "texture_depth_cube"
+  | "texture_depth_cube_array"
+  | "texture_depth_multisampled_2d"
+  | `texture_storage_1d<${WgslStorageFormat}, ${"read" | "write" | "read_write"}>`
+  | `texture_storage_2d<${WgslStorageFormat}, ${"read" | "write" | "read_write"}>`
+  | `texture_storage_2d_array<${WgslStorageFormat}, ${"read" | "write" | "read_write"}>`
+  | `texture_storage_3d<${WgslStorageFormat}, ${"read" | "write" | "read_write"}>`
+  | "texture_external";
+type WgslStruct = `struct`; // Special case.
 
 /**
  * Describes the buffer usage configuration for a GPU buffer.
@@ -46,7 +76,7 @@ type BufferProps = {
 	initialValue?: ArrayLike<number>,
 } & (
 	{
-		dataType: WgslPrimative | WgslVec | WgslMatrix;
+		dataType: WgslPrimative | WgslVec | WgslMatrix | WgslAtomic | WgslSampler;
 
 	} | {
 		dataType: WgslArray | WgslTexture;
