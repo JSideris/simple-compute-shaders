@@ -47,6 +47,7 @@ This library simplifies a great deal of the plumbing needed to do rapid prototyp
 - No vertex shaders or vertex buffers. A significant part of the complexity of GPU programming is dealing with vertex data. This library is for users who want to build compute shaders or do 2D rendering on a quad.
 - Only one shader entry point is supported and it must be called `main`. If you need multiple entry points, build multiple shader pipelines.
 - GPUBufferUsage.MAP_WRITE and GPUBufferUsage.MAP_READ are currently unsupported.
+- No sampler support yet.
 
 ## Requirements
 
