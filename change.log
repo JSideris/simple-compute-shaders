@@ -1,4 +1,4 @@
-Upcoming v0.3.0
+2025-10-02 v0.3.0
 - Wrapped pass and dispatch args in an optional props object for future expansion.
 - Added vastly more types in the ShaderBuffer class including matrix variants, atomic types, and more.
 - Fixed internal typing issues with the ShaderBuffer wrapper class.

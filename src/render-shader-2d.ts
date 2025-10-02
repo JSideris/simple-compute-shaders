@@ -60,18 +60,7 @@ export default class RenderShader2d extends Shader{
 	
 	private lastHeight: number = -1;
 	private lastWidth: number = -1;
-	private view: GPUTextureView = null;
-	private _canvasContext: GPUCanvasContext;
-	private get canvasContext(){
-		return this._canvasContext;
-	}
-	private set canvasContext(value: GPUCanvasContext){
-		this._canvasContext = value;
-		if(value){
-			this.view = value.getCurrentTexture().createView();
-		}
-	}
-
+	private canvasContext: GPUCanvasContext;
 
 	constructor(props: RenderShader2dProps){
 		super(props);
@@ -240,16 +229,17 @@ export default class RenderShader2d extends Shader{
 
 		// this.canvas = props.canvas;
 		{ // Get and configure the canvas context.
-			this.canvasContext = this.props.canvas.getContext('webgpu') as GPUCanvasContext;
-			if(!this.canvasContext){
+			let context = this.props.canvas.getContext('webgpu') as GPUCanvasContext;
+			if(!context){
 				throw new Error("Failed to get a webgpu canvas context.");
 			}
-			this.canvasContext.configure({
+			context.configure({
 				device: Shader.device,
 				format: Shader.presentationFormat,
 				alphaMode: 'premultiplied',
 				// usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST
 			});
+			this.canvasContext = context;
 		}
 
 		{ // Set the vertex buffer.
@@ -311,10 +301,13 @@ export default class RenderShader2d extends Shader{
 			}
 		}
 
+		// This needs to be recreated each frame because the texture is lost after each pass.
+		let view = this.canvasContext.getCurrentTexture().createView();
+
 		let renderPassDescriptor: GPURenderPassDescriptor = {
 			colorAttachments: [
 				{
-					view: this.view,
+					view: view,
 					loadOp: "clear",
 					storeOp: "store",
 					clearValue: { r: 0, g: 0, b: 0, a: 1 }

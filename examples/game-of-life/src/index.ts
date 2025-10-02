@@ -1,18 +1,7 @@
 import { ComputeShader, RenderShader2d, Shader, ShaderBuffer, StorageBuffer, UniformBuffer } from "simple-compute-shaders";
 import dftWgsl from "./shaders/gol.compute.wgsl";
 import renderWgsl from "./shaders/render.fragment.wgsl";
-
-let canvas = document.createElement('canvas');
-canvas.style.backgroundColor = "black";
-document.body.appendChild(canvas);
-
-canvas.width = canvas.height = Math.min(window.innerHeight, window.innerWidth);
-
-document.body.style.margin = "0";
-document.body.style.overflow = "hidden";
-document.body.style.backgroundColor = "#111";
-document.body.style.margin = "auto";
-document.body.style.textAlign = "center";
+import { setupUi } from "./ui";
 
 export default class Pipeline {
 	active: boolean = false;
@@ -45,15 +34,12 @@ export default class Pipeline {
 			this.active = true;
 		}
 
-		{ // Steup.
+		{ // Setup.
 			
 			this.dataArrayA = new Uint32Array(1024*1024);
 			this.dataArrayB = new Uint32Array(1024*1024);
 
-			for (let i = 0; i < this.dataArrayA.length; i++) {
-				if(Math.random() > 0.5) this.dataArrayA[i] = 1;
-				else this.dataArrayA[i] = 0;
-			}
+			this.initializeData();
 		}
 
 		{ // Shader pipeline setup.
@@ -134,15 +120,44 @@ export default class Pipeline {
 		requestAnimationFrame(() => this.runPipeline());
 	}
 
+	initializeData() {
+		for (let i = 0; i < this.dataArrayA.length; i++) {
+			if(Math.random() > 0.5) this.dataArrayA[i] = 1;
+			else this.dataArrayA[i] = 0;
+		}
+	}
+
+	reset() {
+		// Reinitialize the data with random values
+		this.initializeData();
+		
+		// Write the new data to the GPU buffers
+		this.dataBuffers[0].write(this.dataArrayA);
+		
+		// Clear the second buffer (it will be computed on the next frame)
+		this.dataArrayB.fill(0);
+		this.dataBuffers[1].write(this.dataArrayB);
+		
+		// Reset the swap state
+		this.swapState = 0;
+		
+		console.log("Simulation reset");
+	}
+
 	runPipeline() {
 		// Compute the game of life with swapping.
 		this.golComputeShader.dispatch({
-			0: this.swapState == 0 ? "group1" : "group2",
+			bindGroups: 
+				{
+				0: this.swapState == 0 ? "group1" : "group2",
+			}
 		});
 
 		// Render.
 		this.renderShader.pass({
-			0: this.swapState == 0 ? "group1" : "group2",
+			bindGroups: {
+				0: this.swapState == 0 ? "group1" : "group2",
+			}
 		});
 
 		// Swap the state for the next frame.
@@ -153,5 +168,12 @@ export default class Pipeline {
 }
 
 let pipeline = new Pipeline();
+
+let {canvas} = setupUi({
+	resetCallback: () => {
+		console.log("Resetting simulation");
+		pipeline.reset();
+	}
+});
 
 pipeline.start(canvas);

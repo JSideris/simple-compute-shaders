@@ -133,7 +133,9 @@ const shader = new ComputeShader({
 let currentGroup = 0;
 function compute() {
     shader.dispatch({
-        0: currentGroup === 0 ? "group1" : "group2"  // 0 is the layout index
+        bindGroups: {
+            0: currentGroup === 0 ? "group1" : "group2"  // 0 is the layout index
+        }
     });
     currentGroup = 1 - currentGroup;  // Toggle between 0 and 1
 }

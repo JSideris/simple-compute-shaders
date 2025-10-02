@@ -491,7 +491,9 @@ When when running a single step of the simulation, you need to specify which buf
 
 ```TypeScript
 this.golComputeShader.dispatch({
-    0: this.swapState == 0 ? "group1" : "group2",
+    bindGroups: {
+        0: this.swapState == 0 ? "group1" : "group2",
+    }
 });
 this.swapState = 1 - this.swapState;
 ```
