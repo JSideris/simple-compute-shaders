@@ -76,6 +76,11 @@ export abstract class Shader {
 					for (let group of Object.keys(bl)) {
 						for (let b = 0; b < bl[group].length; b++) {
 							let binding = bl[group][b];
+
+							if(!binding?.binding){
+								throw new Error(`Binding ${binding?.name} in group ${group} has no binding.`);
+							}
+
 							if (binding.type != bl[firstGroup][b].type) {
 								throw new Error(`Binding type mismatch in group ${group}: expected '${bl[firstGroup][b].type}', got '${binding.type}'`);
 							}
