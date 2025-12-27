@@ -33,7 +33,7 @@ module.exports = {
   },
   plugins: [
     new HtmlWebpackPlugin({
-      title: 'Game of Life',
+      title: 'Rock Paper Scissors Lizard Spock Spiderman Batman Wizard Glock',
     }),
   ],
   mode: 'development',
