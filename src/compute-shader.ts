@@ -54,11 +54,18 @@ export default class ComputeShader extends Shader{
 		}
 
 		super._setupShader(GPUShaderStage.COMPUTE);
+
+		if (this.props.workgroupCount.some(count => count === 0)) {
+			console.warn("ComputeShader initialized with a workgroup count of 0 in one or more dimensions. Dispatches will be skipped to prevent GPU crashes.");
+		}
 	}
 
 	dispatch(props?: {
 		bindGroups?: Record<number, string>
 	}) {
+		if (this.props.workgroupCount.some(count => count === 0)) {
+			return;
+		}
 
 		{ // Update built-in buffers
 			if(this.props.useExecutionCountBuffer) this.executionCountBuffer.write(new Uint32Array([this.executionCount++]));
