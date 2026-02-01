@@ -38,6 +38,12 @@ export abstract class Shader {
 			throw new Error("Failed to acquire a WebGPU device.");
 		}
 
+		// Handle device loss
+		Shader.device.lost.then((info) => {
+			console.error(`WebGPU device was lost: ${info.message}`);
+			shaderInitialized = false; // Allow re-initialization
+		});
+
 		return Shader.device;
 	}
 

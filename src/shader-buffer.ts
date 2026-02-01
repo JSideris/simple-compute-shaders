@@ -255,20 +255,24 @@ export abstract class ShaderBuffer {
 
 
 		if (props.initialValue) {
-			if (props.dataType === "struct") {
-				// For structs, interpret the ArrayLike as a flattened representation
-				const buffer = this.serializeStructFromArray(props.initialValue, this.structFields!);
-				new Uint8Array(this.buffer.getMappedRange()).set(new Uint8Array(buffer));
-			} else {
-				if (this.baseType == "float") {
-					new Float32Array(this.buffer.getMappedRange()).set(props.initialValue);
+			try {
+				if (props.dataType === "struct") {
+					// For structs, interpret the ArrayLike as a flattened representation
+					const buffer = this.serializeStructFromArray(props.initialValue, this.structFields!);
+					new Uint8Array(this.buffer.getMappedRange()).set(new Uint8Array(buffer));
+				} else {
+					if (this.baseType == "float") {
+						new Float32Array(this.buffer.getMappedRange()).set(props.initialValue);
+					}
+					else if (this.baseType == "uint") {
+						new Uint32Array(this.buffer.getMappedRange()).set(props.initialValue);
+					}
+					else if (this.baseType == "int") {
+						new Int32Array(this.buffer.getMappedRange()).set(props.initialValue);
+					}
 				}
-				else if (this.baseType == "uint") {
-					new Uint32Array(this.buffer.getMappedRange()).set(props.initialValue);
-				}
-				else if (this.baseType == "int") {
-					new Int32Array(this.buffer.getMappedRange()).set(props.initialValue);
-				}
+			} catch (error) {
+				throw new Error(`Failed to initialize buffer with initial value: ${error instanceof Error ? error.message : 'Unknown error'}. Ensure the device is not lost and buffer constraints are met.`);
 			}
 			this.buffer.unmap();
 		}
@@ -402,7 +406,12 @@ export abstract class ShaderBuffer {
 		Shader.device.queue.submit([commandBuffer]);
 
 		// Map the staging buffer for reading
-		await stagingBuffer.mapAsync(GPUMapMode.READ);
+		try {
+			await stagingBuffer.mapAsync(GPUMapMode.READ);
+		} catch (error) {
+			stagingBuffer.destroy();
+			throw new Error(`Failed to map staging buffer for reading: ${error instanceof Error ? error.message : 'Unknown error'}. This may be due to a lost WebGPU device.`);
+		}
 
 		// Get the mapped range
 		const arrayBuffer = stagingBuffer.getMappedRange();
