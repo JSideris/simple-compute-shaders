@@ -20,6 +20,7 @@
     "build:esnext": "tsc",
     "build:cjs": "tsc --project tsconfig-cjs.json",
     "build": "npm run build:esnext && npm run build:cjs",
+    "examples": "npm --prefix examples/gallery run dev",
     "beta": "npm run build && npm publish --tag beta"
   },
   "author": "Joshua Sideris",

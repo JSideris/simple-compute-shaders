@@ -53,12 +53,19 @@ This library simplifies a great deal of the plumbing needed to do rapid prototyp
 
 - **Browser Support**: This library relies on the WebGPU API, which is relatively widely supported, but still not ubiquitous.
 - **WebGPU Enabled**: WebGPU must be enabled in the browser. This may require enabling experimental features or flags.
+- **Linux/Ubuntu Note**: On some Linux distributions (like Ubuntu), hardware acceleration for WebGPU may be disabled by default in Chrome. If you experience poor performance, check `chrome://gpu` and ensure "WebGPU" is hardware accelerated. You may need to launch Chrome with `--enable-features=Vulkan,WebGPU`.
 
 # Getting Started
 
 ## View Examples
 
-Clone this repository locally and check what's in the examples folder. You can use one of these as a starting point for your project. A description of available examples can be found below.
+You can view the examples by running the centralized example gallery.
+
+```bash
+npm run examples
+```
+
+This will start a Vite-powered React application where you can explore all available examples.
 
 ## Installation
 
@@ -80,10 +87,11 @@ npm i simple-compute-shaders
 
 ## Examples
 
-- [Hello Triangle](https://github.com/JSideris/simple-compute-shaders/tree/master/examples/hello-triangle): sipmle render pipeline.
-- [Bitonic Sort](https://github.com/JSideris/simple-compute-shaders/tree/master/examples/bitonic-sort): sort a large dataset on the GPU.
-- [Audio Processor](https://github.com/JSideris/simple-compute-shaders/tree/master/examples/audio-processor): compute DFT of an audio signal and render.
-- [Game Of Life](https://github.com/JSideris/simple-compute-shaders/tree/master/examples/game-of-life): full simulation of a classic 2D tile-based 0-player game.
+- **Hello Triangle**: A simple render pipeline demonstrating basic usage.
+- **Bitonic Sort**: Sort a large dataset on the GPU using compute shaders.
+- **Audio Processor**: Compute DFT of a real-time audio signal and render the results.
+- **Game Of Life**: Full simulation of Conway's Game of Life using buffer swapping.
+- **RPS-9**: A 9-way Rock Paper Scissors cellular automaton simulation.
 
 # Usage
 
@@ -134,7 +142,7 @@ If the `dataType` is set to `struct`, you will need to provide a `name`, which m
 }[]
 ```
 
-[Audio Processor](https://github.com/JSideris/simple-compute-shaders/tree/master/examples/audio-processor) has a complete example of the struct data type usage.
+The `examples/gallery` directory has a complete example of the struct data type usage.
 
 ## Reading and Writing Buffer Data
 
@@ -450,7 +458,7 @@ Within each layout, you must specify a list of swappable named bind groups. Usua
 
 Each named group in a layout contains an array of binding definitions with a name (that will be the name for this binding that's generated in code), the type of buffer, and a reference to the actual buffer to associate with this binding. The binding names and types must match and be in the correct order for each group within a layout or you'll get a runtime error.
 
-The [Game Of Life](https://github.com/JSideris/simple-compute-shaders/tree/master/examples/game-of-life) example has a fully working implementation of buffer swapping:
+The Game Of Life example in the gallery has a fully working implementation of buffer swapping:
 
 ```WGSL
 this.golComputeShader = new ComputeShader({
